@@ -11,7 +11,7 @@ let pollInterval = null;
 let currentRequestId = null;
 let isLive = false;
 let locationReady = false;
-  
+
 // ==========================
 // INIT
 // ==========================
@@ -22,10 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================
-// MAP INIT
+// MAP INIT (RENDER SAFE)
 // ==========================
 function initMap() {
-  map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
+  map = L.map('map', { zoomControl: false }).setView([20.5937, 78.9629], 5); // India fallback
 
   L.tileLayer(
     'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -38,26 +38,34 @@ function initMap() {
   }
 
   navigator.geolocation.getCurrentPosition(
-  pos => {
-    myLat = pos.coords.latitude;
-    myLon = pos.coords.longitude;
-    locationReady = true;
+    pos => {
+      myLat = pos.coords.latitude;
+      myLon = pos.coords.longitude;
+      locationReady = true;
 
-    map.setView([myLat, myLon], 14);
+      map.setView([myLat, myLon], 14);
 
-    userMarker = L.circleMarker([myLat, myLon], {
-      radius: 8,
-      fillColor: "#3bb2d0",
-      color: "#fff",
-      weight: 2,
-      fillOpacity: 1
-    }).addTo(map);
+      userMarker = L.circleMarker([myLat, myLon], {
+        radius: 8,
+        fillColor: "#3bb2d0",
+        color: "#fff",
+        weight: 2,
+        fillOpacity: 1
+      }).addTo(map);
 
-    fetchNearbyUsers();
-  },
-  () => alert("Location permission required")
-);
-
+      fetchNearbyUsers();
+      setInterval(fetchNearbyUsers, 10000); // auto refresh
+    },
+    err => {
+      alert("Please allow location access");
+      console.error(err);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
 }
 
 // ==========================
@@ -72,10 +80,10 @@ async function fetchUserInfo() {
 }
 
 // ==========================
-// NEARBY USERS (VIEW MODE – EVEN IF NOT LIVE)
+// NEARBY USERS (VIEW MODE)
 // ==========================
 async function fetchNearbyUsers() {
-  if (!myLat || !myLon) return;
+  if (!locationReady) return;
 
   const res = await fetch(`/api/nearby?lat=${myLat}&lon=${myLon}`);
   const users = await res.json();
@@ -109,15 +117,15 @@ async function fetchNearbyUsers() {
 // TURN ON SPOTLIGHT
 // ==========================
 async function confirmCheckIn() {
+  if (!locationReady) {
+    alert("Waiting for GPS… please try again");
+    return;
+  }
+
   const place = document.getElementById('place')?.value.trim();
   const intent = document.getElementById('intent')?.value.trim();
   const meetTime = document.getElementById('meet_time')?.value;
   const clue = document.getElementById('visual-clue')?.value.trim();
-
-  if (!myLat || !myLon) {
-    alert("Location not ready");
-    return;
-  }
 
   if (!place || !intent || !clue) {
     alert("Please fill all required fields");
@@ -145,11 +153,10 @@ async function confirmCheckIn() {
   isLive = true;
   closeAllSheets();
 
-  // UI STATE
   document.getElementById('main-fab').style.display = 'none';
   document.getElementById('live-indicator').classList.remove('hidden');
 
-  alert("You are LIVE");
+  alert("You are LIVE 🔴");
 }
 
 // ==========================
@@ -159,7 +166,6 @@ async function turnOffSpotlight() {
   await fetch('/api/checkout', { method: 'POST' });
 
   isLive = false;
-
   document.getElementById('live-indicator').classList.add('hidden');
   document.getElementById('main-fab').style.display = 'flex';
 
@@ -167,14 +173,12 @@ async function turnOffSpotlight() {
 }
 
 // ==========================
-// OPEN OTHER USER PROFILE
+// PROFILE
 // ==========================
 function openProfile(user) {
   selectedUserId = user.id;
-
   document.getElementById('p-username').innerText = user.username;
   document.getElementById('p-score').innerText = user.trust_score ?? '--';
-
   openSheet('profile-sheet');
 }
 
@@ -195,7 +199,7 @@ async function sendRequest() {
 }
 
 // ==========================
-// POLLING (REQUESTS / BELL LOGIC)
+// POLLING
 // ==========================
 function startPolling() {
   pollInterval = setInterval(async () => {
@@ -218,7 +222,7 @@ function startPolling() {
 }
 
 // ==========================
-// ACCEPT / DECLINE REQUEST
+// ACCEPT / DECLINE
 // ==========================
 async function respondRequest(action) {
   if (!currentRequestId) return;
@@ -226,10 +230,7 @@ async function respondRequest(action) {
   await fetch('/api/respond_request', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      request_id: currentRequestId,
-      action
-    })
+    body: JSON.stringify({ request_id: currentRequestId, action })
   });
 
   closeAllSheets();
@@ -264,7 +265,6 @@ function openSheet(id) {
 function closeAllSheets() {
   document.querySelectorAll('.bottom-sheet')
     .forEach(s => s.classList.remove('active'));
-
   setTimeout(() => {
     document.getElementById('overlay').classList.add('hidden');
   }, 300);
