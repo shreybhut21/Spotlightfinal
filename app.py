@@ -138,6 +138,8 @@ def checkin():
     data = request.json
     user_id = session["user_id"]
 
+    print("CHECKIN:", user_id, data["lat"], data["lon"])  # 👈 ADD THIS
+
     expiry = time.time() + (2 * 60 * 60 if data.get("meet_time") else 90 * 60)
 
     conn = db.get_db_connection()
@@ -201,7 +203,7 @@ def nearby():
     result = []
     for r in rows:
         dist = geodesic((lat, lon), (r["lat"], r["lon"])).km
-        if dist <= 500:
+        if dist <= 5:
             result.append({
                 "id": r["user_id"],
                 "lat": r["lat"],
@@ -215,19 +217,9 @@ def nearby():
             })
 
     return jsonify(result)
-@app.route("/api/checkin", methods=["POST"])
-def checkin():
-    if "user_id" not in session:
-        return jsonify({"error": "unauthorized"}), 401
-
-    data = request.json
-    user_id = session["user_id"]
-
-    print("CHECKIN:", user_id, data["lat"], data["lon"])  # 👈 ADD THIS
 
 # ----------------------------
 # RUN (LOCAL ONLY)
 # ----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
-
