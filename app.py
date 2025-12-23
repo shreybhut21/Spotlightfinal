@@ -201,7 +201,7 @@ def nearby():
     result = []
     for r in rows:
         dist = geodesic((lat, lon), (r["lat"], r["lon"])).km
-        if dist <= 5:
+        if dist <= 500:
             result.append({
                 "id": r["user_id"],
                 "lat": r["lat"],
@@ -230,3 +230,4 @@ def checkin():
 # ----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
+
