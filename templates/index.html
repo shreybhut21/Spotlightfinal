@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  >
+  <title>Spotlight</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <!-- Font Awesome -->
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    rel="stylesheet"
+  >
+
+  <!-- Google Font -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"
+    rel="stylesheet"
+  >
+
+  <!-- Main CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <style>
+    /* USER AVATAR – TOP LEFT */
+      .user-avatar {
+        position: fixed;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(8px);
+        border: 2px solid #FFD700;
+        box-shadow: 0 0 12px rgba(255,215,0,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+
+    .user-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- USER AVATAR -->
+  <div class="user-avatar" onclick="goToSettings()" title="{{ user.username }}">
+    <img src="{{ user.avatar_url }}" alt="{{ user.username }}">
+  </div>
+
+  <!-- MAP -->
+  <div id="map"></div>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="trust-score-pill">
+      <i class="fas fa-shield-halved"></i>
+      <span id="my-trust-score">--</span>
+    </div>
+  </header>
+
+  <!-- LIVE INDICATOR -->
+  <div id="live-indicator" class="live-status hidden">
+    <div class="pulsing-dot"></div>
+    <span>You are Live (5 km)</span>
+    <button onclick="turnOffSpotlight()" class="text-btn">OFF</button>
+  </div>
+
+  <!-- CHECK IN BUTTON -->
+  <div class="fab-container" id="main-fab">
+    <button class="glow-btn" onclick="openSheet('checkin-sheet')">
+      <i class="fas fa-location-dot"></i> Check In
+    </button>
+  </div>
+
+  <!-- OVERLAY -->
+  <div id="overlay" class="overlay hidden" onclick="closeAllSheets()"></div>
+
+  <!-- CHECK IN SHEET -->
+  <div id="checkin-sheet" class="bottom-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-body">
+      <h2>Go Spotlight</h2>
+      <p class="subtitle">Visible within 5 km</p>
+
+      <div class="input-group">
+        <input id="place" placeholder="Where are you? (Starbucks, Concert, Library)">
+      </div>
+
+      <div class="input-group">
+        <input id="intent" placeholder="Why are you here? (Coffee, Music, Study)">
+      </div>
+
+      <div class="input-group">
+        <input id="meet_time" type="time">
+      </div>
+
+      <div class="input-group">
+        <select id="bill">
+          <option value="split">Split Bill</option>
+          <option value="self">Pay Individually</option>
+          <option value="host">I Will Pay</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <input id="visual-clue" placeholder="Visual clue (e.g. red jacket, blue hat)">
+      </div>
+
+      <div class="action-row">
+        <button class="secondary-btn" onclick="closeAllSheets()">Cancel</button>
+        <button class="primary-btn" onclick="confirmCheckIn()">Go Live</button>
+      </div>
+
+
+  <!-- PROFILE / REQUEST SHEET -->
+  <div id="profile-sheet" class="bottom-sheet">
+    <div class="sheet-handle"></div>
+
+    <div class="profile-header">
+      <div class="avatar-ring">
+        <i class="fas fa-user"></i>
+      </div>
+      <div>
+        <h2 id="p-username">Username</h2>
+        <div class="trust-badge">
+          <i class="fas fa-star"></i>
+          <span id="p-score">--</span> Trust
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-body">
+      <p id="p-place"></p>
+      <p id="p-intent"></p>
+      <p id="p-time"></p>
+      <p id="p-distance"></p>
+
+      <div class="action-row">
+        <button class="secondary-btn" onclick="closeAllSheets()">Cancel</button>
+        <button class="primary-btn" onclick="sendRequest()">
+          <i class="fas fa-paper-plane"></i> Request to Join
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+<div class="bell-icon" onclick="openRequests()">
+  🔔
+  <span id="bell-dot" class="hidden"></span>
+</div>
+
+</body>
+</html>

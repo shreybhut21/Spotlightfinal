@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotlight | Meet People, Not Profiles</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+
+    <nav>
+        <div class="logo"><i class="fas fa-lightbulb"></i> Spotlight</div>
+        <div class="nav-links">
+            <a href="/auth" class="nav-btn">Login</a>
+            <a href="/auth" class="nav-btn primary">Join Now</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-content">
+            <h1>Meet People, <br><span class="highlight">Not Profiles.</span></h1>
+            <p>The no-chat, map-based social app. See who is at your favorite cafe right now and join their table instantly.</p>
+            <div class="hero-btns">
+                <a href="/auth" class="main-btn glow">Get Started Free</a>
+                <button class="sec-btn">See How It Works</button>
+            </div>
+        </div>
+    </header>
+
+    <section class="features">
+        <div class="card">
+            <div class="icon-box"><i class="fas fa-bolt"></i></div>
+            <h3>Zero Small Talk</h3>
+            <p>Skip the weeks of texting. Send a request, get accepted, and walk to their table.</p>
+        </div>
+        <div class="card">
+            <div class="icon-box"><i class="fas fa-shield-halved"></i></div>
+            <h3>Trust-Driven</h3>
+            <p>Our Trust Score system ensures you meet people who are respectful and on-time.</p>
+        </div>
+        <div class="card">
+            <div class="icon-box"><i class="fas fa-wallet"></i></div>
+            <h3>Middle-Class Friendly</h3>
+            <p>Built-in bill splitting and "Payment Vibes" mean no awkward money moments.</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2025 Spotlight Social. Built for the socially brave.</p>
+    </footer>
+
+</body>
+</html>

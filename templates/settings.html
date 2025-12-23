@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <div class="settings-container">
+    <h2>Account Settings</h2>
+
+    <div class="settings-card">
+      <p><strong>Username:</strong> {{ user.username }}</p>
+      <p><strong>Trust Score:</strong> {{ user.trust_score }}</p>
+    </div>
+
+    <button class="primary-btn" onclick="location.href='/logout'">
+      Logout
+    </button>
+
+    <button class="secondary-btn" onclick="history.back()">
+      Back
+    </button>
+  </div>
+
+</body>
+</html>

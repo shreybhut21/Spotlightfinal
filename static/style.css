@@ -1,0 +1,302 @@
+:root {
+    --bg-color: #1a1a1a;
+    --primary: #FFD700; /* Gold for Spotlight */
+    --text: #ffffff;
+    --modal-bg: #2d2d2d;
+    --danger: #ff4d4d;
+}
+
+body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-color); color: var(--text); overflow: hidden; }
+
+/* Map fills screen */
+#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+
+/* Top Bar */
+.top-bar { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; z-index: 10; }
+.trust-pill { background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; font-weight: bold; color: var(--primary); backdrop-filter: blur(5px); }
+
+/* Bottom Bar */
+.bottom-bar { position: absolute; bottom: 30px; width: 100%; text-align: center; z-index: 10; pointer-events: none; }
+.bottom-bar button { pointer-events: auto; }
+
+/* Buttons */
+.primary-btn { background: var(--primary); border: none; padding: 12px 24px; border-radius: 25px; font-weight: bold; font-size: 16px; color: #000; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4); }
+.secondary-btn { background: transparent; border: 1px solid #666; color: #ccc; margin-top: 10px; padding: 10px 20px; border-radius: 20px; cursor: pointer; }
+.danger-btn { background: var(--danger); color: white; border: none; padding: 10px 20px; border-radius: 20px; margin-top: 10px; }
+
+/* Modals */
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20; display: flex; justify-content: center; align-items: flex-end; }
+.modal.hidden { display: none; }
+.modal-content { background: var(--modal-bg); width: 100%; max-width: 400px; padding: 30px; border-radius: 20px 20px 0 0; text-align: center; animation: slideUp 0.3s ease; }
+
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* Profile Styles */
+.avatar-large { width: 80px; height: 80px; background: #444; border-radius: 50%; margin: 0 auto 10px; border: 3px solid var(--primary); }
+.tags-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 15px 0; }
+.tag-btn { background: #444; color: white; border: none; padding: 8px 12px; border-radius: 15px; cursor: pointer; }
+.tag-btn.selected { background: var(--primary); color: black; }
+
+/* Utilities */
+.hidden { display: none !important; }
+input { width: 80%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; }
+.clue-box { font-size: 1.2em; color: var(--primary); font-weight: bold; margin: 15px 0; }
+/* --- 1. CORE VARIABLES --- */
+:root {
+    --bg-dark: #0f0f0f;
+    --glass-panel: rgba(28, 28, 30, 0.85);
+    --gold: #FFD700;
+    --gold-dim: #bfa300;
+    --text-main: #ffffff;
+    --text-muted: #a0a0a0;
+    --danger: #ff5252;
+    --success: #4caf50;
+    --font-main: 'Inter', sans-serif;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+    margin: 0; padding: 0;
+    font-family: var(--font-main);
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    overflow: hidden; /* Prevent scrolling on map */
+    height: 100vh;
+    width: 100vw;
+}
+
+/* --- 2. MAP & HEADER --- */
+#map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+.app-header {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 15px 20px;
+    z-index: 10;
+    display: flex; justify-content: space-between; align-items: center;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+    pointer-events: none; /* Let clicks pass through to map */
+}
+
+.brand {
+    font-weight: 800; font-size: 1.2rem; color: var(--gold);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+.trust-score-pill {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600; font-size: 0.9rem;
+    display: flex; align-items: center; gap: 8px;
+    pointer-events: auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- 3. LIVE STATUS INDICATOR --- */
+.live-status {
+    position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
+    z-index: 5;
+    background: var(--glass-panel);
+    backdrop-filter: blur(12px);
+    padding: 8px 16px; border-radius: 30px;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    font-size: 0.85rem;
+    pointer-events: auto;
+}
+
+.pulsing-dot {
+    width: 8px; height: 8px; background: var(--success);
+    border-radius: 50%;
+    box-shadow: 0 0 0 rgba(76, 175, 80, 0.4);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+.text-btn { background: none; border: none; color: var(--danger); font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+
+/* --- 4. FAB (Floating Action Button) --- */
+.fab-container {
+    position: absolute; bottom: 40px; left: 0; right: 0;
+    display: flex; justify-content: center;
+    z-index: 10;
+}
+
+.glow-btn {
+    background: var(--gold);
+    color: #000;
+    border: none;
+    padding: 16px 40px;
+    border-radius: 50px;
+    font-size: 1.1rem; font-weight: 800;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+.glow-btn:active { transform: scale(0.95); }
+
+/* --- 5. BOTTOM SHEETS --- */
+.overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    z-index: 100;
+    opacity: 0; animation: fadeIn 0.3s forwards;
+}
+
+.bottom-sheet {
+    position: fixed; left: 0; right: 0; bottom: -100%; /* Hidden by default */
+    background: #1e1e1e;
+    border-radius: 24px 24px 0 0;
+    padding: 20px 24px 40px 24px;
+    z-index: 101;
+    transition: bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    box-shadow: 0 -5px 30px rgba(0,0,0,0.5);
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
+.bell-icon {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  font-size: 22px;
+  cursor: pointer;
+  z-index: 9999;
+}
+#bell-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  background: red;
+  border-radius: 50%;
+}
+
+.bottom-sheet.active { bottom: 0; }
+
+.sheet-handle {
+    width: 40px; height: 4px; background: rgba(255,255,255,0.2);
+    border-radius: 2px; margin: 0 auto 20px auto;
+}
+
+.sheet-body h2 { margin: 0 0 5px 0; font-size: 1.5rem; }
+.subtitle { color: var(--text-muted); font-size: 0.9rem; margin-top: 0; }
+
+/* Form Elements */
+.input-group {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+    margin: 20px 0;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+.input-group input {
+    background: transparent; border: none; color: white;
+    font-size: 1rem; width: 100%; outline: none;
+}
+.input-group i { color: var(--gold); }
+
+/* Tags */
+.tags-row { display: flex; gap: 10px; margin-bottom: 25px; }
+.tag-chip {
+    padding: 8px 16px; background: rgba(255,255,255,0.1);
+    border-radius: 20px; font-size: 0.85rem; cursor: pointer;
+}
+.tag-chip.selected { background: var(--gold); color: black; font-weight: 600; }
+
+/* Buttons */
+.primary-btn {
+    width: 100%; background: var(--gold); color: black; border: none;
+    padding: 16px; border-radius: 16px; font-size: 1rem; font-weight: 700;
+    cursor: pointer;
+}
+.secondary-btn {
+    width: 100%; background: transparent; color: var(--text-muted); border: 1px solid rgba(255,255,255,0.2);
+    padding: 16px; border-radius: 16px; font-size: 1rem; font-weight: 600;
+    cursor: pointer;
+}
+.danger-btn {
+    width: 100%; background: rgba(255, 82, 82, 0.1); color: var(--danger);
+    border: 1px solid var(--danger); padding: 16px; border-radius: 16px; font-weight: 700;
+}
+.success-btn {
+    width: 100%; background: var(--success); color: white; border: none;
+    padding: 16px; border-radius: 16px; font-weight: 700;
+}
+.action-row { display: flex; gap: 15px; margin-top: 20px; }
+
+/* Profile Specifics */
+.profile-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+.avatar-ring {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: #333; display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--gold); font-size: 1.5rem; color: var(--gold);
+}
+.vibe-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.vibe-tag {
+    background: #333; padding: 6px 12px; border-radius: 8px;
+    font-size: 0.8rem; color: #ddd;
+}
+
+/* Timer Circle */
+.timer-circle {
+    width: 80px; height: 80px; border-radius: 50%;
+    border: 4px solid var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px auto;
+    font-size: 1.2rem; font-weight: 800; color: var(--gold);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+}
+.user-avatar {
+  position: fixed;        /* IMPORTANT: fixed, not absolute */
+  top: 16px;
+  left: 16px;
+  z-index: 9999;          /* ABOVE MAP & HEADER */
+  pointer-events: auto;  /* FORCE clicks */
+
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  pointer-events: none; /* Image shouldn’t steal click */
+}
+ 
+/* Utilities */
+.hidden { display: none !important; }
+.center-text { text-align: center; }
+.clue-box { 
+    background: rgba(255,215,0,0.1); padding: 15px; border-radius: 12px; 
+    color: var(--gold); font-weight: 600; margin: 15px 0;
+    border: 1px dashed var(--gold);
+}
+.review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.review-tag {
+    background: #333; color: #fff; border: none; padding: 15px;
+    border-radius: 12px; font-weight: 600; cursor: pointer;
+}
+.review-tag.selected { border: 2px solid var(--gold); color: var(--gold); background: #222; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

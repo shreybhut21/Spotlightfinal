@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Spotlight</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --card: #1a1a1a;
+            --muted: #888;
+            --gold: #d4af37;
+            --bg: #000;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: white;
+            font-family: sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .auth-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            /* 3D Perspective is crucial for the flip effect */
+            perspective: 1000px; 
+        }
+
+        /* The container that actually flips */
+        .auth-flip {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            /* Grid allows the front and back to overlap perfectly without absolute positioning height issues */
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        /* Common styles for both sides */
+        .auth-card {
+            background: var(--card);
+            padding: 40px;
+            border-radius: 24px;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            
+            /* Grid placement to overlap them */
+            grid-row: 1;
+            grid-column: 1;
+            
+            /* Animation mechanics */
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backface-visibility: hidden; /* Hides the back of the div when rotated */
+            -webkit-backface-visibility: hidden;
+        }
+
+        /* Specific Rotation States */
+        .auth-front {
+            transform: rotateY(0deg);
+            z-index: 2;
+        }
+
+        .auth-back {
+            transform: rotateY(180deg);
+            z-index: 1;
+        }
+
+        /* Class applied by JS to trigger flip */
+        .auth-flip.flipped .auth-front {
+            transform: rotateY(-180deg);
+        }
+
+        .auth-flip.flipped .auth-back {
+            transform: rotateY(0deg);
+        }
+
+        /* Typography & Form Styles */
+        .auth-card h2 { margin-top: 0; margin-bottom: 10px; font-size: 1.8rem; }
+        .auth-card p { color: var(--muted); margin-bottom: 25px; font-size: 0.9rem; }
+        
+        .form-group { margin-bottom: 20px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 0.85rem; color: var(--gold); }
+        
+        input, select {
+            width: 100%;
+            padding: 14px;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 12px;
+            color: white;
+            outline: none;
+            transition: 0.3s;
+            box-sizing: border-box; /* Ensures padding doesn't break width */
+        }
+        input:focus { border-color: var(--gold); }
+
+        .main-btn {
+            background: var(--gold);
+            color: #000;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .main-btn:hover { background: #fff; }
+
+        .vibe-selection {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .vibe-item {
+            background: #222;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .vibe-item input { width: auto; margin: 0; }
+
+        .toggle-link { color: var(--gold); text-decoration: none; font-weight: 600; cursor: pointer; }
+        .toggle-link:hover { text-decoration: underline; }
+        
+        .back-home { position: absolute; top: 30px; left: 30px; color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <a href="home.html" class="back-home"><i class="fas fa-arrow-left"></i> Back to Home</a>
+
+    <div class="auth-wrapper">
+        <div class="auth-flip" id="authFlip">
+            
+            <div class="auth-card auth-front">
+                <h2>Welcome Back</h2>
+                <p>Log in to see who is nearby.</p>
+
+                <form action="/login" method="POST">
+                    <div class="form-group">
+                        <input type="text" name="username" placeholder="Username" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" name="password" placeholder="Password" required>
+                    </div>
+                    <button type="submit" class="main-btn glow" style="width:100%;">Login</button>
+                </form>
+
+                <p style="margin-top:20px;">
+                    New to Spotlight?
+                    <span class="toggle-link" onclick="flipCard()">Create an account</span>
+                </p>
+            </div>
+
+            <div class="auth-card auth-back">
+                <h2>Create Account</h2>
+                <p>Join the community and start meeting.</p>
+
+                <form action="/signup" method="POST">
+                    <div class="form-group">
+                        <input type="text" name="username" placeholder="Pick a Username" required>
+                    </div>
+
+                    <div class="form-group">
+                        <select name="gender" required>
+                            <option value="" disabled selected>Your Gender</option>
+                            <option>Male</option>
+                            <option>Female</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="password" name="password" placeholder="Create Password" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Pick your Vibe Bubbles:</label>
+                        <div class="vibe-selection">
+                            <label class="vibe-item"><input type="checkbox" name="vibes" value="Coffee"> ☕ Coffee</label>
+                            <label class="vibe-item"><input type="checkbox" name="vibes" value="Study"> 📚 Study</label>
+                            <label class="vibe-item"><input type="checkbox" name="vibes" value="Music"> 🎵 Music</label>
+                            <label class="vibe-item"><input type="checkbox" name="vibes" value="Coding"> 💻 Coding</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="main-btn glow" style="width:100%;">Sign Up</button>
+                </form>
+
+                <p style="margin-top:20px;">
+                    Already have an account?
+                    <span class="toggle-link" onclick="flipCard()">Log in</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function flipCard() {
+            // This simply toggles the class that triggers the CSS transform
+            const container = document.getElementById('authFlip');
+            container.classList.toggle('flipped');
+        }
+    </script>
+</body>
+</html>
