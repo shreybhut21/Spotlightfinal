@@ -22,10 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================
-// MAP INIT (RENDER SAFE)
+// MAP INIT (FINAL FIX)
 // ==========================
 function initMap() {
-  map = L.map('map', { zoomControl: false }).setView([20.5937, 78.9629], 5); // India fallback
+  map = L.map('map', { zoomControl: false }).setView([20.5937, 78.9629], 5);
 
   L.tileLayer(
     'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -37,33 +37,44 @@ function initMap() {
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(
+  // 🔥 USE watchPosition (NOT getCurrentPosition)
+  navigator.geolocation.watchPosition(
     pos => {
       myLat = pos.coords.latitude;
       myLon = pos.coords.longitude;
       locationReady = true;
 
-      map.setView([myLat, myLon], 14);
+      console.log(
+        "LIVE LOCATION:",
+        myLat,
+        myLon,
+        "Accuracy:",
+        pos.coords.accuracy
+      );
 
-      userMarker = L.circleMarker([myLat, myLon], {
-        radius: 8,
-        fillColor: "#3bb2d0",
-        color: "#fff",
-        weight: 2,
-        fillOpacity: 1
-      }).addTo(map);
+      if (!userMarker) {
+        map.setView([myLat, myLon], 14);
+        userMarker = L.circleMarker([myLat, myLon], {
+          radius: 8,
+          fillColor: "#3bb2d0",
+          color: "#fff",
+          weight: 2,
+          fillOpacity: 1
+        }).addTo(map);
+      } else {
+        userMarker.setLatLng([myLat, myLon]);
+      }
 
       fetchNearbyUsers();
-      setInterval(fetchNearbyUsers, 10000); // auto refresh
     },
     err => {
-      alert("Please allow location access");
+      alert("Please enable GPS / Location services");
       console.error(err);
     },
     {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
+      enableHighAccuracy: true, // 🔥 MOST IMPORTANT
+      maximumAge: 0,
+      timeout: 20000
     }
   );
 }
@@ -80,7 +91,7 @@ async function fetchUserInfo() {
 }
 
 // ==========================
-// NEARBY USERS (VIEW MODE)
+// NEARBY USERS
 // ==========================
 async function fetchNearbyUsers() {
   if (!locationReady) return;
@@ -114,11 +125,11 @@ async function fetchNearbyUsers() {
 }
 
 // ==========================
-// TURN ON SPOTLIGHT
+// GO LIVE
 // ==========================
 async function confirmCheckIn() {
   if (!locationReady) {
-    alert("Waiting for GPS… please try again");
+    alert("Waiting for GPS fix. Please wait a few seconds.");
     return;
   }
 
@@ -131,6 +142,8 @@ async function confirmCheckIn() {
     alert("Please fill all required fields");
     return;
   }
+
+  console.log("CHECKIN SENDING:", myLat, myLon);
 
   const res = await fetch('/api/checkin', {
     method: 'POST',
@@ -152,7 +165,6 @@ async function confirmCheckIn() {
 
   isLive = true;
   closeAllSheets();
-
   document.getElementById('main-fab').style.display = 'none';
   document.getElementById('live-indicator').classList.remove('hidden');
 
@@ -160,7 +172,7 @@ async function confirmCheckIn() {
 }
 
 // ==========================
-// TURN OFF SPOTLIGHT
+// TURN OFF
 // ==========================
 async function turnOffSpotlight() {
   await fetch('/api/checkout', { method: 'POST' });
@@ -222,7 +234,7 @@ function startPolling() {
 }
 
 // ==========================
-// ACCEPT / DECLINE
+// RESPOND REQUEST
 // ==========================
 async function respondRequest(action) {
   if (!currentRequestId) return;
@@ -265,6 +277,7 @@ function openSheet(id) {
 function closeAllSheets() {
   document.querySelectorAll('.bottom-sheet')
     .forEach(s => s.classList.remove('active'));
+
   setTimeout(() => {
     document.getElementById('overlay').classList.add('hidden');
   }, 300);
