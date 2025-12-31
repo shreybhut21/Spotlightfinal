@@ -184,6 +184,30 @@ def check_requests():
         })
 
     return jsonify({"type": "none"})
+# ----------------------------
+
+
+# ----------------------------
+# API – RESPOND REQUEST
+# ----------------------------
+@app.route("/api/respond_request", methods=["POST"])
+def respond_request():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    request_id = request.json.get("request_id")
+    action = request.json.get("action")  # accept / decline
+
+    status = "accepted" if action == "accept" else "declined"
+
+    conn = db.get_db_connection()
+    conn.execute(
+        "UPDATE requests SET status = ? WHERE id = ?",
+        (status, request_id)
+    )
+    conn.commit()
+
+    return jsonify({"status": status})
 
 # ----------------------------
 # API – CHECK IN / OUT
