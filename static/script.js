@@ -7,9 +7,7 @@ let myLon = null;
 let userMarker = null;
 let nearbyMarkers = [];
 let selectedUserId = null;
-let pollInterval = null;
 let currentRequestId = null;
-let isLive = false;
 let locationReady = false;
 
 // ==========================
@@ -18,7 +16,6 @@ let locationReady = false;
 document.addEventListener("DOMContentLoaded", () => {
   initMap();
   fetchUserInfo();
-  startPolling();
   setInterval(pollRequests, 5000);
 });
 
@@ -44,8 +41,6 @@ function initMap() {
       myLon = pos.coords.longitude;
       locationReady = true;
 
-      console.log("LIVE LOCATION:", myLat, myLon, "Accuracy:", pos.coords.accuracy);
-
       if (!userMarker) {
         map.setView([myLat, myLon], 14);
         userMarker = L.circleMarker([myLat, myLon], {
@@ -61,14 +56,11 @@ function initMap() {
 
       fetchNearbyUsers();
     },
-    err => {
-      console.error(err);
-      alert("Please enable location services");
-    },
+    () => alert("Please enable location services"),
     {
       enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 20000
+      timeout: 20000,
+      maximumAge: 0
     }
   );
 }
@@ -79,14 +71,12 @@ function initMap() {
 async function fetchUserInfo() {
   const res = await fetch("/api/user_info");
   if (!res.ok) return;
-
   const data = await res.json();
-  const el = document.getElementById("my-trust-score");
-  if (el) el.innerText = data.trust_score ?? "--";
+  document.getElementById("my-trust-score").innerText = data.trust_score ?? "--";
 }
 
 // ==========================
-// NEARBY USERS (FIXED)
+// NEARBY USERS
 // ==========================
 async function fetchNearbyUsers() {
   if (!locationReady) return;
@@ -119,64 +109,6 @@ async function fetchNearbyUsers() {
 }
 
 // ==========================
-// GO LIVE
-// ==========================
-async function confirmCheckIn() {
-  if (!locationReady) {
-    alert("Waiting for GPS fix...");
-    return;
-  }
-
-  const place = document.getElementById("place")?.value.trim();
-  const intent = document.getElementById("intent")?.value.trim();
-  const meetTime = document.getElementById("meet_time")?.value;
-  const clue = document.getElementById("visual-clue")?.value.trim();
-
-  if (!place || !intent || !clue) {
-    alert("Please fill all required fields");
-    return;
-  }
-
-  console.log("CHECKIN SENDING:", myLat, myLon);
-
-  const res = await fetch("/api/checkin", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      lat: myLat,
-      lon: myLon,
-      place,
-      intent,
-      meet_time: meetTime,
-      clue
-    })
-  });
-
-  if (!res.ok) {
-    alert("Failed to go live");
-    return;
-  }
-
-  isLive = true;
-  closeAllSheets();
-  document.getElementById("main-fab").style.display = "none";
-  document.getElementById("live-indicator").classList.remove("hidden");
-
-  alert("You are LIVE 🔴");
-}
-
-// ==========================
-// TURN OFF
-// ==========================
-async function turnOffSpotlight() {
-  await fetch("/api/checkout", { method: "POST" });
-
-  isLive = false;
-  document.getElementById("live-indicator").classList.add("hidden");
-  document.getElementById("main-fab").style.display = "flex";
-}
-
-// ==========================
 // PROFILE
 // ==========================
 function openProfile(user) {
@@ -203,12 +135,8 @@ async function sendRequest() {
 }
 
 // ==========================
-// REQUEST POLLING
+// POLL REQUESTS
 // ==========================
-function startPolling() {
-  pollInterval = setInterval(pollRequests, 5000);
-}
-
 async function pollRequests() {
   const res = await fetch("/api/check_requests");
   if (!res.ok) return;
@@ -221,22 +149,22 @@ async function pollRequests() {
 
     document.getElementById("bellContent").innerHTML = `
       <strong>${data.data.username}</strong>
-      <p>Wants to meet</p>
-      <button onclick="respondRequest('accept', ${data.data.id})">Accept</button>
-      <button onclick="respondRequest('decline', ${data.data.id})">Decline</button>
+      <p>Wants to meet you</p>
+      <button onclick="respondRequest('accept')">Accept</button>
+      <button onclick="respondRequest('decline')">Decline</button>
     `;
   }
 }
 
 // ==========================
-// RESPOND REQUEST (ONLY ONE)
+// RESPOND REQUEST
 // ==========================
-async function respondRequest(action, requestId) {
+async function respondRequest(action) {
   await fetch("/api/respond_request", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      request_id: requestId,
+      request_id: currentRequestId,
       action
     })
   });
@@ -250,23 +178,12 @@ async function respondRequest(action, requestId) {
 // ==========================
 function openSheet(id) {
   document.getElementById("overlay").classList.remove("hidden");
-  setTimeout(() => {
-    document.getElementById(id).classList.add("active");
-  }, 10);
+  setTimeout(() => document.getElementById(id).classList.add("active"), 10);
 }
 
 function closeAllSheets() {
   document.querySelectorAll(".bottom-sheet").forEach(s => s.classList.remove("active"));
-  setTimeout(() => {
-    document.getElementById("overlay").classList.add("hidden");
-  }, 300);
-}
-
-// ==========================
-// SETTINGS
-// ==========================
-function goToSettings() {
-  window.location.href = "/settings";
+  setTimeout(() => document.getElementById("overlay").classList.add("hidden"), 300);
 }
 
 // ==========================
