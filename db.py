@@ -25,14 +25,7 @@ def close_db(e=None):
     db = g.pop('_database', None)
     if db is not None:
         db.close()
-def init_db():
-    db_path = _get_db_path()
 
-    # 🔥 TEMP: force reset database on Render
-    if os.path.exists(db_path):
-        os.remove(db_path)
-
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
 # ----------------------------
 # INIT DB (SAFE)
@@ -54,6 +47,7 @@ def init_db():
             trust_score INTEGER DEFAULT 100,
             avatar_level INTEGER DEFAULT 1,
             vibe_tags TEXT,
+            avatar_url TEXT,
             is_active INTEGER DEFAULT 1,
             created_at REAL
         )
@@ -109,4 +103,3 @@ def init_app(app):
 if __name__ == '__main__':
     init_db()
     print('Initialized the database at', _get_db_path())
-
