@@ -290,3 +290,61 @@ function closeAllSheets() {
 function goToSettings() {
   window.location.href = '/settings';
 }
+// ==========================
+// BELL UI
+// ==========================
+function toggleBellBox() {
+  document.getElementById("bellBox").classList.toggle("hidden");
+}
+
+// Close on outside click
+document.addEventListener("click", (e) => {
+  const bell = document.querySelector(".bell-wrapper");
+  if (!bell.contains(e.target)) {
+    document.getElementById("bellBox").classList.add("hidden");
+  }
+});
+
+// ==========================
+// POLL REQUESTS
+// ==========================
+async function pollRequests() {
+  const res = await fetch("/api/check_requests");
+  if (!res.ok) return;
+
+  const data = await res.json();
+
+  if (data.type === "incoming") {
+    document.getElementById("bell-dot").classList.remove("hidden");
+    document.getElementById("bellIcon").classList.add("pulse");
+
+    document.getElementById("bellContent").innerHTML = `
+      <strong>${data.data.username}</strong>
+      <p>${data.data.intent || "Meeting request"}</p>
+
+      <button onclick="respondRequest('accept', ${data.data.id})">Accept</button>
+      <button onclick="respondRequest('decline', ${data.data.id})">Decline</button>
+    `;
+  }
+}
+
+// Poll every 5 seconds
+setInterval(pollRequests, 5000);
+
+// ==========================
+// RESPOND REQUEST
+// ==========================
+async function respondRequest(action, requestId) {
+  await fetch("/api/respond_request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      request_id: requestId,
+      action
+    })
+  });
+
+  document.getElementById("bell-dot").classList.add("hidden");
+  document.getElementById("bellIcon").classList.remove("pulse");
+  document.getElementById("bellBox").classList.add("hidden");
+}
