@@ -296,3 +296,33 @@ document.addEventListener("click", e => {
 function goToSettings() {
   window.location.href = "/settings";
 }
+
+// ==========================
+// MATCH MODE UI
+// ==========================
+async function checkMatchMode() {
+  const res = await fetch("/api/match_status");
+  if (!res.ok) return;
+
+  const data = await res.json();
+  if (!data.matched) return;
+
+  document.body.innerHTML = `
+    <div style="
+      height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      background:#000;
+      color:gold;
+      font-size:22px;
+    ">
+      <h2>✨ Match Mode ✨</h2>
+      <p>You matched with <b>${data.partner}</b></p>
+      <p>No other users can see you now</p>
+    </div>
+  `;
+}
+
+document.addEventListener("DOMContentLoaded", checkMatchMode);
