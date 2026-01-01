@@ -61,6 +61,14 @@ def init_db():
         )
     """)
 
+    # Add missing columns if they don't exist
+    c.execute("PRAGMA table_info(users)")
+    columns = [row[1] for row in c.fetchall()]
+    if 'is_matched' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN is_matched INTEGER DEFAULT 0")
+    if 'matched_with' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN matched_with INTEGER")
+
     # --------------------------------------------------
     # SPOTLIGHTS (LIVE USERS)
     # --------------------------------------------------
