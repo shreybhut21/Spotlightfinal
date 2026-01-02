@@ -429,6 +429,71 @@ function showMyFeedbackUI() {
     </div>
   `;
 }
-<button onclick="fetchMyFeedback()" class="primary-btn" style="margin-top:10px;">
-  View My Feedback
-</button>
+
+// ==========================
+// MISSING FUNCTIONS
+// ==========================
+function goToSettings() {
+  window.location.href = '/settings';
+}
+
+function toggleBellBox() {
+  const box = document.getElementById('bellBox');
+  if (box) box.classList.toggle('hidden');
+}
+
+// ==========================
+// CHECKIN FUNCTIONS
+// ==========================
+async function confirmCheckIn() {
+  if (!locationReady) {
+    alert("Location not ready yet");
+    return;
+  }
+
+  const place = document.getElementById("place").value.trim();
+  const intent = document.getElementById("intent").value.trim();
+  const meet_time = document.getElementById("meet_time").value;
+  const bill = document.getElementById("bill").value;
+  const clue = document.getElementById("visual-clue").value.trim();
+
+  if (!place || !intent) {
+    alert("Please fill in place and intent");
+    return;
+  }
+
+  const data = {
+    lat: myLat,
+    lon: myLon,
+    place,
+    intent,
+    meet_time,
+    bill,
+    clue
+  };
+
+  const res = await fetch("/api/checkin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+
+  if (!res.ok) {
+    alert("Failed to check in");
+    return;
+  }
+
+  closeAllSheets();
+  // Show live indicator
+  document.getElementById("live-indicator").classList.remove("hidden");
+}
+
+async function turnOffSpotlight() {
+  const res = await fetch("/api/checkout", { method: "POST" });
+  if (!res.ok) {
+    alert("Failed to turn off");
+    return;
+  }
+
+  document.getElementById("live-indicator").classList.add("hidden");
+}
