@@ -1,5 +1,4 @@
 import sqlite3
-import time
 import os
 import click
 from flask import g
@@ -27,16 +26,19 @@ def close_db(e=None):
         db.close()
 
 # ======================================================
-# INIT DATABASE (NON-DESTRUCTIVE)
+# INIT DATABASE (SAFE + AUTO-MIGRATION)
 # ======================================================
 def init_db():
     db_path = _get_db_path()
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
     conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
-    # ---------------- USERS ----------------
+    # --------------------------------------------------
+    # USERS
+    # --------------------------------------------------
     c.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,51 +54,13 @@ def init_db():
         )
     """)
 
-    # ---- AUTO-MIGRATION (SAFE) ----
-    existing_cols = [row[1] for row in c.execute("PRAGMA table_info(users)")]
+    # ---- AUTO-MIGRATION (users) ----
+    user_cols = [r["name"] for r in c.execute("PRAGMA table_info(users)")]
 
-    if "is_matched" not in existing_cols:
+    if "is_matched" not in user_cols:
         c.execute("ALTER TABLE users ADD COLUMN is_matched INTEGER DEFAULT 0")
 
-    if "matched_with" not in existing_cols:
-        c.execute("ALTER TABLE users ADD COLUMN matched_with INTEGER")
-
-    # ---------------- SPOTLIGHTS ----------------
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS spotlights (
-            user_id INTEGER,
-            lat REAL,
-            lon REAL,
-            place TEXT,
-            intent TEXT,
-            meet_time TEXT,
-            clue TEXT,
-            timestamp REAL,
-            expiry REAL
-        )
-    """)
-
-    # ---------------- REQUESTS ----------------
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS requests (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sender_id INTEGER NOT NULL,
-            receiver_id INTEGER NOT NULL,
-            status TEXT CHECK(status IN ('pending','accepted','declined')),
-            created_at REAL
-        )
-    """)
-
-    conn.commit()
-    conn.close()
-
-
-    # Add missing columns if they don't exist
-    c.execute("PRAGMA table_info(users)")
-    columns = [row[1] for row in c.fetchall()]
-    if 'is_matched' not in columns:
-        c.execute("ALTER TABLE users ADD COLUMN is_matched INTEGER DEFAULT 0")
-    if 'matched_with' not in columns:
+    if "matched_with" not in user_cols:
         c.execute("ALTER TABLE users ADD COLUMN matched_with INTEGER")
 
     # --------------------------------------------------
@@ -106,18 +70,14 @@ def init_db():
         CREATE TABLE IF NOT EXISTS spotlights (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-
             lat REAL NOT NULL,
             lon REAL NOT NULL,
-
             place TEXT,
             intent TEXT,
             meet_time TEXT,
             clue TEXT,
-
             timestamp REAL,
             expiry REAL,
-
             FOREIGN KEY(user_id) REFERENCES users(id)
         )
     """)
@@ -128,54 +88,43 @@ def init_db():
     c.execute("""
         CREATE TABLE IF NOT EXISTS requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             sender_id INTEGER NOT NULL,
             receiver_id INTEGER NOT NULL,
-
             status TEXT CHECK(status IN ('pending','accepted','declined'))
                    DEFAULT 'pending',
-
             created_at REAL,
-
             FOREIGN KEY(sender_id) REFERENCES users(id),
             FOREIGN KEY(receiver_id) REFERENCES users(id)
         )
     """)
 
     # --------------------------------------------------
-    # MATCHES (HISTORY + FUTURE CHAT LINK)
+    # MATCHES (ACTIVE / ENDED)
     # --------------------------------------------------
     c.execute("""
         CREATE TABLE IF NOT EXISTS matches (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             user1_id INTEGER NOT NULL,
             user2_id INTEGER NOT NULL,
-
             created_at REAL,
             ended_at REAL,
-
             status TEXT CHECK(status IN ('active','ended'))
                    DEFAULT 'active',
-
             FOREIGN KEY(user1_id) REFERENCES users(id),
             FOREIGN KEY(user2_id) REFERENCES users(id)
         )
     """)
 
     # --------------------------------------------------
-    # MESSAGES (FOR FUTURE CHAT)
+    # MESSAGES (FUTURE CHAT)
     # --------------------------------------------------
     c.execute("""
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             match_id INTEGER NOT NULL,
             sender_id INTEGER NOT NULL,
-
             message TEXT NOT NULL,
             created_at REAL,
-
             FOREIGN KEY(match_id) REFERENCES matches(id),
             FOREIGN KEY(sender_id) REFERENCES users(id)
         )
@@ -187,15 +136,11 @@ def init_db():
     c.execute("""
         CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             reviewer_id INTEGER NOT NULL,
             reviewed_id INTEGER NOT NULL,
-
             score INTEGER,
             comment TEXT,
-
             created_at REAL,
-
             FOREIGN KEY(reviewer_id) REFERENCES users(id),
             FOREIGN KEY(reviewed_id) REFERENCES users(id)
         )
@@ -210,7 +155,7 @@ def init_db():
 @click.command("init-db")
 def init_db_command():
     init_db()
-    click.echo(f"Initialized the database at {_get_db_path()}")
+    click.echo(f"Initialized database at {_get_db_path()}")
 
 # ======================================================
 # APP HOOK
