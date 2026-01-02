@@ -10,6 +10,7 @@ let selectedUserId = null;
 let currentRequestId = null;
 let locationReady = false;
 let requestPoller = null;
+let matchPoller = null;
 let isMatched = false;
 
 // GPS smoothing
@@ -24,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initMap();
   fetchUserInfo();
   requestPoller = setInterval(pollRequests, 5000);
+  startMatchPoller(); // 🔥 NEW
 });
 
 // ==========================
@@ -47,11 +49,7 @@ function initMap() {
   navigator.geolocation.watchPosition(
     handleLocation,
     () => showGPS("📍 Unable to get location"),
-    {
-      enableHighAccuracy: true,
-      timeout: 20000,
-      maximumAge: 3000
-    }
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 3000 }
   );
 }
 
@@ -61,7 +59,6 @@ function initMap() {
 function handleLocation(pos) {
   const { latitude, longitude } = pos.coords;
 
-  // Accept first fix immediately (important for localhost)
   if (!hasFirstFix) {
     myLat = latitude;
     myLon = longitude;
@@ -72,10 +69,8 @@ function handleLocation(pos) {
     lastPositions.push([latitude, longitude]);
     if (lastPositions.length > MAX_POINTS) lastPositions.shift();
 
-    myLat =
-      lastPositions.reduce((s, p) => s + p[0], 0) / lastPositions.length;
-    myLon =
-      lastPositions.reduce((s, p) => s + p[1], 0) / lastPositions.length;
+    myLat = lastPositions.reduce((s, p) => s + p[0], 0) / lastPositions.length;
+    myLon = lastPositions.reduce((s, p) => s + p[1], 0) / lastPositions.length;
   }
 
   if (!userMarker) {
@@ -103,7 +98,6 @@ function showGPS(text) {
   el.innerText = text;
   el.style.display = "block";
 }
-
 function hideGPS() {
   const el = document.getElementById("gps-status");
   if (!el) return;
@@ -122,6 +116,26 @@ async function fetchUserInfo() {
   if (el) el.innerText = data.trust_score ?? "--";
 
   if (data.is_matched === 1) enterMatchMode();
+}
+
+// ==========================
+// 🔥 MATCH STATUS POLLING (NEW)
+// ==========================
+function startMatchPoller() {
+  if (matchPoller) return;
+  matchPoller = setInterval(checkMatchStatus, 3000);
+}
+
+async function checkMatchStatus() {
+  if (isMatched) return;
+
+  const res = await fetch("/api/match_status");
+  if (!res.ok) return;
+
+  const data = await res.json();
+  if (data.matched) {
+    enterMatchMode();
+  }
 }
 
 // ==========================
@@ -164,81 +178,18 @@ function openProfile(user) {
 }
 
 // ==========================
-// GO LIVE
-// ==========================
-async function confirmCheckIn() {
-  if (!locationReady) {
-    showGPS("📍 Locating… try again in a moment");
-    return;
-  }
-
-  const place = placeInput();
-  const intent = intentInput();
-  const clue = clueInput();
-  const meet_time = document.getElementById("meet_time").value || null;
-
-  if (!place || !intent || !clue) return;
-
-  await fetch("/api/checkin", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ lat: myLat, lon: myLon, place, intent, meet_time, clue })
-  });
-
-  document.getElementById("live-indicator").classList.remove("hidden");
-  document.getElementById("main-fab").style.display = "none";
-  closeAllSheets();
-}
-
-// ==========================
-// TURN OFF LIVE ✅ FIXED
-// ==========================
-async function turnOffSpotlight() {
-  await fetch("/api/checkout", { method: "POST" });
-  document.getElementById("live-indicator").classList.add("hidden");
-  document.getElementById("main-fab").style.display = "flex";
-}
-
-// ==========================
 // SEND REQUEST
 // ==========================
 async function sendRequest() {
-  if (!selectedUserId) {
-    alert("No user selected");
-    return;
-  }
+  if (!selectedUserId) return;
 
-  try {
-    const res = await fetch("/api/send_request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ receiver_id: selectedUserId })
-    });
+  await fetch("/api/send_request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ receiver_id: selectedUserId })
+  });
 
-    if (res.status === 401) {
-      // Unauthorized, redirect to login
-      window.location.href = "/auth";
-      return;
-    }
-
-    let data;
-    const contentType = res.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
-      data = await res.json();
-    } else {
-      // If not JSON, treat as error
-      data = { error: await res.text() };
-    }
-
-    if (res.ok) {
-      alert("Request sent!");
-    } else {
-      alert(data.error || `Error ${res.status}: ${res.statusText}`);
-    }
-  } catch (error) {
-    alert("Network error: " + error.message);
-  }
-
+  startMatchPoller(); // 🔥 ensure sender enters match
   closeAllSheets();
 }
 
@@ -250,8 +201,8 @@ async function pollRequests() {
 
   const res = await fetch("/api/check_requests");
   if (!res.ok) return;
-  const data = await res.json();
 
+  const data = await res.json();
   if (data.type !== "incoming") return;
 
   currentRequestId = data.data.id;
@@ -287,8 +238,11 @@ async function respondRequest(action) {
 // MATCH MODE
 // ==========================
 function enterMatchMode() {
+  if (isMatched) return;
+
   isMatched = true;
   clearInterval(requestPoller);
+  clearInterval(matchPoller);
 
   nearbyMarkers.forEach(m => map.removeLayer(m));
   nearbyMarkers = [];
@@ -298,6 +252,7 @@ function enterMatchMode() {
       justify-content:center;flex-direction:column;
       background:#000;color:gold;">
       <h2>✨ Match Mode ✨</h2>
+      <p>You are matched 🎉</p>
       <button onclick="endMatch()" class="primary-btn">End Match</button>
     </div>
   `;
