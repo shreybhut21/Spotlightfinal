@@ -63,7 +63,7 @@ def init_db():
         c.execute("ALTER TABLE users ADD COLUMN matched_with INTEGER")
 
     # --------------------------------------------------
-    # SPOTLIGHTS
+    # SPOTLIGHTS (LIVE USERS)
     # --------------------------------------------------
     c.execute("""
         CREATE TABLE IF NOT EXISTS spotlights (
@@ -84,10 +84,13 @@ def init_db():
     # --------------------------------------------------
     # REQUESTS (AUTO-FIX LEGACY SCHEMA)
     # --------------------------------------------------
-    existing_req_cols = [r["name"] for r in c.execute("PRAGMA table_info(requests)")]
+    try:
+        existing_req_cols = [r["name"] for r in c.execute("PRAGMA table_info(requests)")]
+    except sqlite3.OperationalError:
+        existing_req_cols = []
 
     if "spotlight_id" in existing_req_cols:
-        # 🔥 legacy broken table → rebuild clean
+        # 🔥 Legacy broken table → rebuild clean
         c.execute("ALTER TABLE requests RENAME TO _requests_old")
 
         c.execute("""
@@ -126,7 +129,7 @@ def init_db():
         """)
 
     # --------------------------------------------------
-    # MATCHES
+    # MATCHES (ACTIVE / ENDED)
     # --------------------------------------------------
     c.execute("""
         CREATE TABLE IF NOT EXISTS matches (
@@ -143,33 +146,21 @@ def init_db():
     """)
 
     # --------------------------------------------------
-    # MESSAGES (FUTURE)
-    # --------------------------------------------------
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            match_id INTEGER NOT NULL,
-            sender_id INTEGER NOT NULL,
-            message TEXT NOT NULL,
-            created_at REAL,
-            FOREIGN KEY(match_id) REFERENCES matches(id),
-            FOREIGN KEY(sender_id) REFERENCES users(id)
-        )
-    """)
-
-    # --------------------------------------------------
-    # REVIEWS (FUTURE)
+    # REVIEWS / FEEDBACK (⭐ OUT OF 10)
     # --------------------------------------------------
     c.execute("""
         CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id INTEGER NOT NULL,
             reviewer_id INTEGER NOT NULL,
             reviewed_id INTEGER NOT NULL,
-            score INTEGER,
+            rating INTEGER CHECK(rating BETWEEN 1 AND 10),
             comment TEXT,
             created_at REAL,
+            FOREIGN KEY(match_id) REFERENCES matches(id),
             FOREIGN KEY(reviewer_id) REFERENCES users(id),
-            FOREIGN KEY(reviewed_id) REFERENCES users(id)
+            FOREIGN KEY(reviewed_id) REFERENCES users(id),
+            UNIQUE(match_id, reviewer_id)
         )
     """)
 
@@ -188,6 +179,9 @@ def init_app(app):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
 
+# ======================================================
+# MANUAL RUN
+# ======================================================
 if __name__ == "__main__":
     init_db()
     print("Database initialized at:", _get_db_path())
