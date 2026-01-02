@@ -273,6 +273,22 @@ def respond_request():
     return jsonify({"status": "matched"})
 
 # ======================================================
+# API – MATCH STATUS
+# ======================================================
+@app.route("/api/match_status")
+def match_status():
+    if "user_id" not in session:
+        return jsonify({"matched": False})
+
+    conn = db.get_db_connection()
+    u = conn.execute(
+        "SELECT is_matched FROM users WHERE id=?",
+        (session["user_id"],)
+    ).fetchone()
+
+    return jsonify({"matched": bool(u["is_matched"])})
+
+# ======================================================
 # API – END MATCH
 # ======================================================
 @app.route("/api/end_match", methods=["POST"])
@@ -283,23 +299,106 @@ def end_match():
     uid = session["user_id"]
     conn = db.get_db_connection()
 
-    user = conn.execute(
+    other = conn.execute(
         "SELECT matched_with FROM users WHERE id=?",
         (uid,)
-    ).fetchone()
-
-    if not user or not user["matched_with"]:
-        return jsonify({"status": "no_match"})
-
-    other = user["matched_with"]
+    ).fetchone()["matched_with"]
 
     conn.execute(
         "UPDATE users SET is_matched=0, matched_with=NULL WHERE id IN (?, ?)",
         (uid, other)
     )
 
+    conn.execute("""
+        UPDATE matches
+        SET status='ended', ended_at=?
+        WHERE (user1_id=? AND user2_id=?)
+           OR (user1_id=? AND user2_id=?)
+    """, (time.time(), uid, other, other, uid))
+
     conn.commit()
     return jsonify({"status": "ended"})
+
+# ======================================================
+# API – GET FEEDBACK TARGET (after match)
+# ======================================================
+@app.route("/api/feedback_target")
+def feedback_target():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    uid = session["user_id"]
+    conn = db.get_db_connection()
+
+    row = conn.execute("""
+        SELECT m.user1_id, m.user2_id
+        FROM matches m
+        WHERE (m.user1_id=? OR m.user2_id=?)
+        AND m.status='ended'
+        ORDER BY m.ended_at DESC
+        LIMIT 1
+    """, (uid, uid)).fetchone()
+
+    if not row:
+        return jsonify({"error": "no_match"})
+
+    other_id = row["user2_id"] if row["user1_id"] == uid else row["user1_id"]
+
+    other = conn.execute(
+        "SELECT id, username, trust_score FROM users WHERE id=?",
+        (other_id,)
+    ).fetchone()
+
+    return jsonify(dict(other))
+
+
+# ======================================================
+# API – SUBMIT FEEDBACK
+# ======================================================
+# ======================================================
+# API – VIEW MY FEEDBACK
+# ======================================================
+@app.route("/api/my_feedback")
+def my_feedback():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    uid = session["user_id"]
+    conn = db.get_db_connection()
+
+    rows = conn.execute("""
+        SELECT r.rating, r.comment, r.created_at, u.username
+        FROM reviews r
+        JOIN users u ON u.id = r.reviewer_id
+        WHERE r.reviewed_id=?
+        ORDER BY r.created_at DESC
+    """, (uid,)).fetchall()
+
+    if not rows:
+        return jsonify({
+            "average": None,
+            "count": 0,
+            "reviews": []
+        })
+
+    avg = round(sum(r["rating"] for r in rows) / len(rows), 1)
+
+    return jsonify({
+        "average": avg,
+        "count": len(rows),
+        "reviews": [
+            {
+                "rating": r["rating"],
+                "comment": r["comment"],
+                "by": r["username"],
+                "time": r["created_at"]
+            }
+            for r in rows
+        ]
+    })
+
+
+
 
 # ======================================================
 # API – CHECKIN / CHECKOUT
