@@ -91,6 +91,18 @@ def logout():
     session.clear()
     return redirect("/")
 
+@app.route("/settings")
+def settings():
+    if "user_id" not in session:
+        return redirect("/auth")
+
+    conn = db.get_db_connection()
+    user = conn.execute(
+        "SELECT * FROM users WHERE id = ?", (session["user_id"],)
+    ).fetchone()
+
+    return render_template("settings.html", user=user)
+
 @app.route("/index.html")
 def index_html():
     if "user_id" not in session:
@@ -368,7 +380,7 @@ def my_feedback():
 
     rows = conn.execute("""
         SELECT r.rating, r.comment, r.created_at, u.username
-        FROM reviews r
+        FROM reviews r 
         JOIN users u ON u.id = r.reviewer_id
         WHERE r.reviewed_id=?
         ORDER BY r.created_at DESC
