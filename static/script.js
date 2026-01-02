@@ -10,6 +10,12 @@ let selectedUserId = null;
 let currentRequestId = null;
 let locationReady = false;
 let requestPoller = null;
+let isMatched = false;
+
+// GPS smoothing
+let lastPositions = [];
+const MAX_POINTS = 5;
+let hasFirstFix = false;
 
 // ==========================
 // INIT
@@ -17,7 +23,7 @@ let requestPoller = null;
 document.addEventListener("DOMContentLoaded", () => {
   initMap();
   fetchUserInfo();
-  window.requestPoller = setInterval(pollRequests, 5000);
+  requestPoller = setInterval(pollRequests, 5000);
 });
 
 // ==========================
@@ -32,49 +38,90 @@ function initMap() {
   ).addTo(map);
 
   if (!navigator.geolocation) {
-    alert("Geolocation not supported");
+    showGPS("Geolocation not supported");
     return;
   }
 
+  showGPS("📍 Getting your location…");
+
   navigator.geolocation.watchPosition(
-    pos => {
-      myLat = pos.coords.latitude;
-      myLon = pos.coords.longitude;
-      locationReady = true;
-
-      if (!userMarker) {
-        map.setView([myLat, myLon], 14);
-        userMarker = L.circleMarker([myLat, myLon], {
-          radius: 8,
-          fillColor: "#3bb2d0",
-          color: "#fff",
-          weight: 2,
-          fillOpacity: 1
-        }).addTo(map);
-      } else {
-        userMarker.setLatLng([myLat, myLon]);
-      }
-
-      fetchNearbyUsers();
-    },
-    () => alert("Please enable location services"),
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    handleLocation,
+    () => showGPS("📍 Unable to get location"),
+    {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 3000
+    }
   );
+}
+
+// ==========================
+// LOCATION HANDLER
+// ==========================
+function handleLocation(pos) {
+  const { latitude, longitude } = pos.coords;
+
+  // Accept first fix immediately (important for localhost)
+  if (!hasFirstFix) {
+    myLat = latitude;
+    myLon = longitude;
+    locationReady = true;
+    hasFirstFix = true;
+    hideGPS();
+  } else {
+    lastPositions.push([latitude, longitude]);
+    if (lastPositions.length > MAX_POINTS) lastPositions.shift();
+
+    myLat =
+      lastPositions.reduce((s, p) => s + p[0], 0) / lastPositions.length;
+    myLon =
+      lastPositions.reduce((s, p) => s + p[1], 0) / lastPositions.length;
+  }
+
+  if (!userMarker) {
+    map.setView([myLat, myLon], 15);
+    userMarker = L.circleMarker([myLat, myLon], {
+      radius: 8,
+      fillColor: "#3bb2d0",
+      color: "#fff",
+      weight: 2,
+      fillOpacity: 1
+    }).addTo(map);
+  } else {
+    userMarker.setLatLng([myLat, myLon]);
+  }
+
+  if (!isMatched) fetchNearbyUsers();
+}
+
+// ==========================
+// SOFT GPS UI
+// ==========================
+function showGPS(text) {
+  const el = document.getElementById("gps-status");
+  if (!el) return;
+  el.innerText = text;
+  el.style.display = "block";
+}
+
+function hideGPS() {
+  const el = document.getElementById("gps-status");
+  if (!el) return;
+  el.style.display = "none";
 }
 
 // ==========================
 // USER INFO
 // ==========================
 async function fetchUserInfo() {
-  try {
-    const res = await fetch("/api/user_info");
-    if (!res.ok) return;
-    const data = await res.json();
-    document.getElementById("my-trust-score").innerText =
-      data.trust_score ?? "--";
-  } catch (e) {
-    console.error("user_info error", e);
-  }
+  const res = await fetch("/api/user_info");
+  if (!res.ok) return;
+  const data = await res.json();
+
+  const el = document.getElementById("my-trust-score");
+  if (el) el.innerText = data.trust_score ?? "--";
+
+  if (data.is_matched === 1) enterMatchMode();
 }
 
 // ==========================
@@ -92,16 +139,10 @@ async function fetchNearbyUsers() {
   nearbyMarkers = [];
 
   users.forEach(user => {
-    const ring = document.createElement("div");
-    ring.style.width = "60px";
-    ring.style.height = "60px";
-    ring.style.borderRadius = "50%";
-    ring.style.background = "rgba(255,215,0,0.25)";
-    ring.style.border = "2px solid rgba(255,215,0,0.8)";
-    ring.style.cursor = "pointer";
-
     const icon = L.divIcon({
-      html: ring.outerHTML,
+      html: `<div style="width:60px;height:60px;border-radius:50%;
+        background:rgba(255,215,0,0.25);
+        border:2px solid rgba(255,215,0,0.8)"></div>`,
       iconSize: [60, 60],
       className: ""
     });
@@ -123,41 +164,26 @@ function openProfile(user) {
 }
 
 // ==========================
-// CHECK IN (GO LIVE) ✅
+// GO LIVE
 // ==========================
 async function confirmCheckIn() {
   if (!locationReady) {
-    alert("Waiting for GPS fix…");
+    showGPS("📍 Locating… try again in a moment");
     return;
   }
 
-  const place = document.getElementById("place").value.trim();
-  const intent = document.getElementById("intent").value.trim();
+  const place = placeInput();
+  const intent = intentInput();
+  const clue = clueInput();
   const meet_time = document.getElementById("meet_time").value || null;
-  const clue = document.getElementById("visual-clue").value.trim();
 
-  if (!place || !intent || !clue) {
-    alert("Please fill all required fields");
-    return;
-  }
+  if (!place || !intent || !clue) return;
 
-  const res = await fetch("/api/checkin", {
+  await fetch("/api/checkin", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      lat: myLat,
-      lon: myLon,
-      place,
-      intent,
-      meet_time,
-      clue
-    })
+    body: JSON.stringify({ lat: myLat, lon: myLon, place, intent, meet_time, clue })
   });
-
-  if (!res.ok) {
-    alert("Failed to go live");
-    return;
-  }
 
   document.getElementById("live-indicator").classList.remove("hidden");
   document.getElementById("main-fab").style.display = "none";
@@ -165,91 +191,42 @@ async function confirmCheckIn() {
 }
 
 // ==========================
-// TURN OFF LIVE ✅
+// TURN OFF LIVE ✅ FIXED
 // ==========================
 async function turnOffSpotlight() {
-  const res = await fetch("/api/checkout", { method: "POST" });
-  if (!res.ok) {
-    alert("Failed to turn off");
-    return;
-  }
-
+  await fetch("/api/checkout", { method: "POST" });
   document.getElementById("live-indicator").classList.add("hidden");
   document.getElementById("main-fab").style.display = "flex";
 }
 
 // ==========================
-// SEND REQUEST
-// ==========================
-async function sendRequest() {
-  if (!selectedUserId) return;
-
-  const res = await fetch("/api/send_request", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ receiver_id: selectedUserId })
-  });
-
-  if (!res.ok) {
-    alert("Request failed");
-    return;
-  }
-
-  closeAllSheets();
-  alert("Request sent ✅");
-}
-
-// ==========================
-// POLL REQUESTS
+// REQUESTS
 // ==========================
 async function pollRequests() {
+  if (isMatched) return;
+
   const res = await fetch("/api/check_requests");
   if (!res.ok) return;
-
   const data = await res.json();
 
-  if (data.type === "incoming") {
-    currentRequestId = data.data.id;
-    document.getElementById("bell-dot").classList.remove("hidden");
+  if (data.type !== "incoming") return;
 
-    document.getElementById("bellContent").innerHTML = `
-      <strong>${data.data.username}</strong>
-      <p>Wants to meet you</p>
-      <div style="display:flex; gap:8px; margin-top:8px;">
-        <button onclick="respondRequest('accept')" class="primary-btn">Accept</button>
-        <button onclick="respondRequest('decline')" class="secondary-btn">Decline</button>
-      </div>
-    `;
-  }
-
-  // also check if user got matched (accept flow sets is_matched on both users)
-  try {
-    const infoRes = await fetch("/api/user_info");
-    if (infoRes.ok) {
-      const info = await infoRes.json();
-      if (info.is_matched === 1) {
-        // stop polling
-        clearInterval(window.requestPoller);
-
-        // optional: hide map markers
-        nearbyMarkers.forEach(m => map.removeLayer(m));
-        nearbyMarkers = [];
-
-        // show match confirmation
-        alert("🎉 You’re matched!");
-      }
-    }
-  } catch (e) {
-    console.error("user_info poll error", e);
-  }
+  currentRequestId = data.data.id;
+  document.getElementById("bell-dot").classList.remove("hidden");
+  document.getElementById("bellContent").innerHTML = `
+    <strong>${data.data.username}</strong>
+    <p>Wants to meet you</p>
+    <div class="action-row">
+      <button onclick="respondRequest('accept')" class="primary-btn">Accept</button>
+      <button onclick="respondRequest('decline')" class="secondary-btn">Decline</button>
+    </div>
+  `;
 }
 
 // ==========================
 // RESPOND REQUEST
 // ==========================
 async function respondRequest(action) {
-  if (!currentRequestId) return;
-
   await fetch("/api/respond_request", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -259,25 +236,40 @@ async function respondRequest(action) {
   currentRequestId = null;
   document.getElementById("bell-dot").classList.add("hidden");
   document.getElementById("bellBox").classList.add("hidden");
+
+  if (action === "accept") enterMatchMode();
+}
+
+// ==========================
+// MATCH MODE
+// ==========================
+function enterMatchMode() {
+  isMatched = true;
+  clearInterval(requestPoller);
+
+  nearbyMarkers.forEach(m => map.removeLayer(m));
+  nearbyMarkers = [];
+
+  document.body.innerHTML = `
+    <div style="height:100vh;display:flex;align-items:center;
+      justify-content:center;flex-direction:column;
+      background:#000;color:gold;">
+      <h2>✨ Match Mode ✨</h2>
+      <button onclick="endMatch()" class="primary-btn">End Match</button>
+    </div>
+  `;
+}
+
+// ==========================
+// END MATCH
+// ==========================
+async function endMatch() {
+  await fetch("/api/end_match", { method: "POST" });
+  window.location.reload();
 }
 
 // ==========================
 // UI HELPERS
-// ==========================
-function openSheet(id) {
-  document.getElementById("overlay").classList.remove("hidden");
-  setTimeout(() => document.getElementById(id).classList.add("active"), 10);
-}
-
-function closeAllSheets() {
-  document.querySelectorAll(".bottom-sheet").forEach(s =>
-    s.classList.remove("active")
-  );
-  setTimeout(() => document.getElementById("overlay").classList.add("hidden"), 300);
-}
-
-// ==========================
-// BELL UI
 // ==========================
 function toggleBellBox() {
   document.getElementById("bellBox").classList.toggle("hidden");
@@ -290,39 +282,16 @@ document.addEventListener("click", e => {
   }
 });
 
-// ==========================
-// SETTINGS
-// ==========================
-function goToSettings() {
-  window.location.href = "/settings";
+const placeInput = () => document.getElementById("place")?.value.trim();
+const intentInput = () => document.getElementById("intent")?.value.trim();
+const clueInput = () => document.getElementById("visual-clue")?.value.trim();
+
+function openSheet(id) {
+  document.getElementById("overlay").classList.remove("hidden");
+  setTimeout(() => document.getElementById(id).classList.add("active"), 10);
 }
 
-// ==========================
-// MATCH MODE UI
-// ==========================
-async function checkMatchMode() {
-  const res = await fetch("/api/match_status");
-  if (!res.ok) return;
-
-  const data = await res.json();
-  if (!data.matched) return;
-
-  document.body.innerHTML = `
-    <div style="
-      height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      flex-direction:column;
-      background:#000;
-      color:gold;
-      font-size:22px;
-    ">
-      <h2>✨ Match Mode ✨</h2>
-      <p>You matched with <b>${data.partner}</b></p>
-      <p>No other users can see you now</p>
-    </div>
-  `;
+function closeAllSheets() {
+  document.querySelectorAll(".bottom-sheet").forEach(s => s.classList.remove("active"));
+  setTimeout(() => document.getElementById("overlay").classList.add("hidden"), 300);
 }
-
-document.addEventListener("DOMContentLoaded", checkMatchMode);
