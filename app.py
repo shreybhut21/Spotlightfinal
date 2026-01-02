@@ -6,6 +6,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from geopy.distance import geodesic
 import db
 
+# ======================================================
+# APP SETUP
+# ======================================================
 app = Flask(
     __name__,
     template_folder="templates",
@@ -16,18 +19,18 @@ app = Flask(
 app.secret_key = os.environ.get("SPOTLIGHT_SECRET_KEY", "spotlight_secret_key")
 app.logger.setLevel(logging.DEBUG)
 
-# ----------------------------
+# ======================================================
 # DB INIT
-# ----------------------------
+# ======================================================
 db.init_app(app)
 try:
     db.init_db()
 except Exception:
     pass
 
-# ----------------------------
+# ======================================================
 # AUTH / PAGES
-# ----------------------------
+# ======================================================
 @app.route("/")
 def home():
     return render_template("home.html")
@@ -46,10 +49,7 @@ def login():
         "SELECT * FROM users WHERE username = ?", (username,)
     ).fetchone()
 
-    if not user or not user["password_hash"]:
-        return render_template("auth.html", error="Invalid credentials")
-
-    if not check_password_hash(user["password_hash"], password):
+    if not user or not check_password_hash(user["password_hash"], password):
         return render_template("auth.html", error="Invalid credentials")
 
     session["user_id"] = user["id"]
@@ -74,9 +74,9 @@ def signup():
         """
         INSERT INTO users
         (username, password_hash, trust_score, is_matched, matched_with, is_active, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, 100, 0, NULL, 1, ?)
         """,
-        (username, pwd_hash, 100, 0, None, 1, time.time())
+        (username, pwd_hash, time.time())
     )
     conn.commit()
 
@@ -103,9 +103,9 @@ def index_html():
 
     return render_template("index.html", user=user)
 
-# ----------------------------
+# ======================================================
 # API – USER INFO
-# ----------------------------
+# ======================================================
 @app.route("/api/user_info")
 def user_info():
     if "user_id" not in session:
@@ -119,9 +119,9 @@ def user_info():
 
     return jsonify(dict(user))
 
-# ----------------------------
+# ======================================================
 # API – SEND REQUEST
-# ----------------------------
+# ======================================================
 @app.route("/api/send_request", methods=["POST"])
 def send_request():
     if "user_id" not in session:
@@ -134,6 +134,15 @@ def send_request():
         return jsonify({"error": "invalid"}), 400
 
     conn = db.get_db_connection()
+
+    # block if either already matched
+    matched = conn.execute(
+        "SELECT is_matched FROM users WHERE id IN (?, ?)",
+        (sender_id, receiver_id)
+    ).fetchall()
+
+    if any(row["is_matched"] for row in matched):
+        return jsonify({"error": "already_matched"}), 409
 
     existing = conn.execute(
         """
@@ -148,8 +157,8 @@ def send_request():
 
     conn.execute(
         """
-        INSERT INTO requests (sender_id, receiver_id, status, matched, created_at)
-        VALUES (?, ?, 'pending', 0, ?)
+        INSERT INTO requests (sender_id, receiver_id, status, created_at)
+        VALUES (?, ?, 'pending', ?)
         """,
         (sender_id, receiver_id, time.time())
     )
@@ -157,9 +166,9 @@ def send_request():
 
     return jsonify({"status": "sent"})
 
-# ----------------------------
+# ======================================================
 # API – CHECK REQUESTS
-# ----------------------------
+# ======================================================
 @app.route("/api/check_requests")
 def check_requests():
     if "user_id" not in session:
@@ -189,101 +198,122 @@ def check_requests():
 
     return jsonify({"type": "none"})
 
-# ----------------------------
-# API – RESPOND REQUEST (🔥 MATCH MODE FIX)
-# ----------------------------
+# ======================================================
+# API – RESPOND REQUEST (ACCEPT / DECLINE)
+# ======================================================
 @app.route("/api/respond_request", methods=["POST"])
 def respond_request():
     if "user_id" not in session:
         return jsonify({"error": "unauthorized"}), 401
 
-    req_id = request.json["request_id"]
-    action = request.json["action"]
+    user_id = session["user_id"]
+    data = request.json
+    request_id = data.get("request_id")
+    action = data.get("action")
+
+    if action not in ("accept", "decline"):
+        return jsonify({"error": "invalid"}), 400
 
     conn = db.get_db_connection()
+
     req = conn.execute(
-        "SELECT * FROM requests WHERE id = ?", (req_id,)
+        """
+        SELECT * FROM requests
+        WHERE id=? AND receiver_id=? AND status='pending'
+        """,
+        (request_id, user_id)
     ).fetchone()
 
     if not req:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": "not_found"}), 404
 
-    if action == "accept":
-        # mark request
-        conn.execute(
-            "UPDATE requests SET status='accepted', matched=1 WHERE id=?",
-            (req_id,)
-        )
+    sender_id = req["sender_id"]
 
-        # 🔒 LOCK BOTH USERS (MATCH MODE)
-        conn.execute(
-            "UPDATE users SET is_matched=1, matched_with=? WHERE id=?",
-            (req["receiver_id"], req["sender_id"])
-        )
-        conn.execute(
-            "UPDATE users SET is_matched=1, matched_with=? WHERE id=?",
-            (req["sender_id"], req["receiver_id"])
-        )
-
-        # remove both from map
-        conn.execute(
-            "DELETE FROM spotlights WHERE user_id IN (?, ?)",
-            (req["sender_id"], req["receiver_id"])
-        )
-
-    else:
+    if action == "decline":
         conn.execute(
             "UPDATE requests SET status='declined' WHERE id=?",
-            (req_id,)
+            (request_id,)
         )
+        conn.commit()
+        return jsonify({"status": "declined"})
+
+    # ================= ACCEPT =================
+    conn.execute(
+        "UPDATE requests SET status='accepted' WHERE id=?",
+        (request_id,)
+    )
+
+    conn.execute(
+        "UPDATE users SET is_matched=1, matched_with=? WHERE id=?",
+        (sender_id, user_id)
+    )
+    conn.execute(
+        "UPDATE users SET is_matched=1, matched_with=? WHERE id=?",
+        (user_id, sender_id)
+    )
+
+    # remove both from live map
+    conn.execute(
+        "DELETE FROM spotlights WHERE user_id IN (?, ?)",
+        (user_id, sender_id)
+    )
+
+    # cancel all other pending requests
+    conn.execute(
+        """
+        UPDATE requests SET status='declined'
+        WHERE status='pending'
+        AND (sender_id IN (?, ?) OR receiver_id IN (?, ?))
+        """,
+        (user_id, sender_id, user_id, sender_id)
+    )
 
     conn.commit()
-    return jsonify({"status": action})
+    return jsonify({"status": "matched"})
 
-# ----------------------------
-# API – MATCH STATUS
-# ----------------------------
-@app.route("/api/match_status")
-def match_status():
+# ======================================================
+# API – END MATCH
+# ======================================================
+@app.route("/api/end_match", methods=["POST"])
+def end_match():
     if "user_id" not in session:
-        return jsonify({"matched": False})
+        return jsonify({"error": "unauthorized"}), 401
 
     uid = session["user_id"]
     conn = db.get_db_connection()
 
     user = conn.execute(
-        "SELECT is_matched, matched_with FROM users WHERE id=?",
+        "SELECT matched_with FROM users WHERE id=?",
         (uid,)
     ).fetchone()
 
-    if not user["is_matched"]:
-        return jsonify({"matched": False})
+    if not user or not user["matched_with"]:
+        return jsonify({"status": "no_match"})
 
-    partner = conn.execute(
-        "SELECT username FROM users WHERE id=?",
-        (user["matched_with"],)
-    ).fetchone()
+    other = user["matched_with"]
 
-    return jsonify({
-        "matched": True,
-        "partner": partner["username"]
-    })
+    conn.execute(
+        "UPDATE users SET is_matched=0, matched_with=NULL WHERE id IN (?, ?)",
+        (uid, other)
+    )
 
-# ----------------------------
+    conn.commit()
+    return jsonify({"status": "ended"})
+
+# ======================================================
 # API – CHECKIN / CHECKOUT
-# ----------------------------
+# ======================================================
 @app.route("/api/checkin", methods=["POST"])
 def checkin():
     if "user_id" not in session:
         return jsonify({"error": "unauthorized"}), 401
 
     data = request.json
-    user_id = session["user_id"]
-
-    expiry = time.time() + (2 * 60 * 60 if data.get("meet_time") else 90 * 60)
+    uid = session["user_id"]
+    expiry = time.time() + 90 * 60
 
     conn = db.get_db_connection()
-    conn.execute("DELETE FROM spotlights WHERE user_id=?", (user_id,))
+    conn.execute("DELETE FROM spotlights WHERE user_id=?", (uid,))
     conn.execute(
         """
         INSERT INTO spotlights
@@ -291,7 +321,7 @@ def checkin():
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            user_id,
+            uid,
             data["lat"],
             data["lon"],
             data["place"],
@@ -315,9 +345,9 @@ def checkout():
     conn.commit()
     return jsonify({"status": "off"})
 
-# ----------------------------
-# API – NEARBY USERS (MATCH-SAFE)
-# ----------------------------
+# ======================================================
+# API – NEARBY USERS (MATCH SAFE)
+# ======================================================
 @app.route("/api/nearby")
 def nearby():
     if "user_id" not in session:
@@ -353,8 +383,8 @@ def nearby():
 
     return jsonify(result)
 
-# ----------------------------
+# ======================================================
 # RUN
-# ----------------------------
+# ======================================================
 if __name__ == "__main__":
     app.run(debug=True)
