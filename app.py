@@ -367,6 +367,25 @@ def feedback_target():
 # ======================================================
 # API – SUBMIT FEEDBACK
 # ======================================================
+@app.route("/api/submit_feedback", methods=["POST"])
+def submit_feedback():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.json
+    reviewer_id = session["user_id"]
+    reviewed_id = data.get("reviewed_id")
+    rating = data.get("rating")
+    comment = data.get("comment")
+
+    conn = db.get_db_connection()
+    conn.execute(
+        "INSERT INTO reviews (reviewer_id, reviewed_id, rating, comment, created_at) VALUES (?, ?, ?, ?, ?)",
+        (reviewer_id, reviewed_id, rating, comment, time.time())
+    )
+    conn.commit()
+    return jsonify({"status": "submitted"})
+
 # ======================================================
 # API – VIEW MY FEEDBACK
 # ======================================================
