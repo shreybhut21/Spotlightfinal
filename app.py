@@ -174,42 +174,53 @@ def send_request():
     if "user_id" not in session:
         return jsonify({"error": "unauthorized"}), 401
 
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "invalid_json"}), 400
+
     sender_id = session["user_id"]
-    receiver_id = request.json.get("receiver_id")
+    receiver_id = data.get("receiver_id")
+
+    if not receiver_id:
+        return jsonify({"error": "missing_receiver_id"}), 400
 
     if sender_id == receiver_id:
         return jsonify({"error": "invalid"}), 400
 
     conn = db.get_db_connection()
 
-    # block if either already matched
-    rows = conn.execute(
-        "SELECT is_matched FROM users WHERE id IN (?, ?)",
-        (sender_id, receiver_id)
-    ).fetchall()
+    try:
+        # block if either already matched
+        rows = conn.execute(
+            "SELECT is_matched FROM users WHERE id IN (?, ?)",
+            (sender_id, receiver_id)
+        ).fetchall()
 
-    if any(r["is_matched"] for r in rows):
-        return jsonify({"error": "already_matched"}), 409
+        if any(r["is_matched"] for r in rows):
+            return jsonify({"error": "already_matched"}), 409
 
-    existing = conn.execute(
-        """
-        SELECT id FROM requests
-        WHERE sender_id=? AND receiver_id=? AND status='pending'
-        """,
-        (sender_id, receiver_id)
-    ).fetchone()
+        existing = conn.execute(
+            """
+            SELECT id FROM requests
+            WHERE sender_id=? AND receiver_id=? AND status='pending'
+            """,
+            (sender_id, receiver_id)
+        ).fetchone()
 
-    if existing:
-        return jsonify({"status": "already_sent"}), 409
+        if existing:
+            return jsonify({"status": "already_sent"}), 409
 
-    conn.execute(
-        """
-        INSERT INTO requests (sender_id, receiver_id, status, created_at)
-        VALUES (?, ?, 'pending', ?)
-        """,
-        (sender_id, receiver_id, time.time())
-    )
-    conn.commit()
+        conn.execute(
+            """
+            INSERT INTO requests (sender_id, receiver_id, status, created_at)
+            VALUES (?, ?, 'pending', ?)
+            """,
+            (sender_id, receiver_id, time.time())
+        )
+        conn.commit()
+    except Exception as e:
+        app.logger.error(f"Error in send_request: {e}")
+        return jsonify({"error": str(e)}), 500
 
     return jsonify({"status": "sent"})
 
