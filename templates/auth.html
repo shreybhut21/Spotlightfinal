@@ -4,219 +4,371 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Join Spotlight</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
     <style>
         :root {
             --card: #1a1a1a;
             --muted: #888;
             --gold: #d4af37;
-            --bg: #000;
+            --gold-hover: #b5952f;
+            --bg: #050505;
+            --input-bg: #0a0a0a;
+            --border: #333;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             background-color: var(--bg);
             color: white;
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            overflow-x: hidden;
+            overflow-x: hidden; /* Prevent horizontal scroll during flip */
         }
 
+        /* --- Back Button --- */
+        .back-home {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            color: var(--muted);
+            text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: 0.3s ease;
+            z-index: 10;
+        }
+        .back-home:hover {
+            color: var(--gold);
+            border-color: var(--gold);
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        /* --- Wrapper & Flip Logic --- */
         .auth-wrapper {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            /* 3D Perspective is crucial for the flip effect */
-            perspective: 1000px; 
+            perspective: 1000px; /* Essential for 3D flip */
         }
 
-        /* The container that actually flips */
         .auth-flip {
             position: relative;
             width: 100%;
-            max-width: 400px;
-            /* Grid allows the front and back to overlap perfectly without absolute positioning height issues */
+            max-width: 440px;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* Grid trick to make sure height adjusts to the tallest card */
             display: grid;
             grid-template-columns: 1fr;
         }
 
-        /* Common styles for both sides */
+        .auth-flip.flipped {
+            transform: rotateY(-180deg);
+        }
+
         .auth-card {
             background: var(--card);
             padding: 40px;
             border-radius: 24px;
-            width: 100%;
-            border: 1px solid rgba(255,255,255,0.05);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
             
-            /* Grid placement to overlap them */
+            /* Positioning logic */
             grid-row: 1;
             grid-column: 1;
-            
-            /* Animation mechanics */
-            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            backface-visibility: hidden; /* Hides the back of the div when rotated */
+            backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
         }
 
-        /* Specific Rotation States */
-        .auth-front {
-            transform: rotateY(0deg);
-            z-index: 2;
+        /* --- KEY FIX: POINTER EVENTS --- */
+        /* This prevents clicking the form that is currently hidden behind */
+        .auth-front { 
+            transform: rotateY(0deg); 
+            z-index: 2; 
+        }
+        .auth-back { 
+            transform: rotateY(180deg); 
+            z-index: 1; 
+            /* By default, back is hidden, so disable clicks */
+            pointer-events: none; 
         }
 
-        .auth-back {
-            transform: rotateY(180deg);
-            z-index: 1;
+        /* When flipped, swap interaction logic */
+        .auth-flip.flipped .auth-front { 
+            pointer-events: none; 
+        }
+        .auth-flip.flipped .auth-back { 
+            pointer-events: auto; 
         }
 
-        /* Class applied by JS to trigger flip */
-        .auth-flip.flipped .auth-front {
-            transform: rotateY(-180deg);
+        /* --- Typography & Inputs --- */
+        h2 { 
+            margin: 0 0 8px; 
+            font-size: 2rem;
+            color: white;
+            letter-spacing: -0.5px;
+        }
+        p { 
+            color: var(--muted); 
+            font-size: 0.95rem; 
+            margin-bottom: 30px;
+            line-height: 1.5;
         }
 
-        .auth-flip.flipped .auth-back {
-            transform: rotateY(0deg);
+        .form-group { margin-bottom: 20px; }
+        .form-row { display: flex; gap: 15px; } 
+
+        label {
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 500;
         }
 
-        /* Typography & Form Styles */
-        .auth-card h2 { margin-top: 0; margin-bottom: 10px; font-size: 1.8rem; }
-        .auth-card p { color: var(--muted); margin-bottom: 25px; font-size: 0.9rem; }
-        
-        .form-group { margin-bottom: 20px; text-align: left; }
-        .form-group label { display: block; margin-bottom: 8px; font-size: 0.85rem; color: var(--gold); }
-        
-        input, select {
+        input, select, textarea {
             width: 100%;
-            padding: 14px;
-            background: #000;
-            border: 1px solid #333;
+            padding: 14px 16px;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
             border-radius: 12px;
             color: white;
             outline: none;
-            transition: 0.3s;
-            box-sizing: border-box; /* Ensures padding doesn't break width */
+            font-size: 1rem;
+            transition: all 0.3s ease;
         }
-        input:focus { border-color: var(--gold); }
 
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+        }
+
+        textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+
+        /* --- Vibe Selection (Chips) --- */
+        .vibe-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .vibe-checkbox { display: none; }
+        
+        .vibe-label {
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #ccc;
+            user-select: none;
+        }
+
+        .vibe-label:hover { border-color: var(--gold); }
+
+        .vibe-checkbox:checked + .vibe-label {
+            background: var(--gold);
+            color: #000;
+            border-color: var(--gold);
+            font-weight: 600;
+        }
+
+        /* --- Buttons --- */
         .main-btn {
+            width: 100%;
             background: var(--gold);
             color: #000;
             border: none;
-            padding: 15px;
+            padding: 16px;
             border-radius: 12px;
-            font-weight: bold;
+            font-weight: 700;
+            font-size: 1rem;
             cursor: pointer;
-            transition: 0.3s;
-        }
-        .main-btn:hover { background: #fff; }
-
-        .vibe-selection {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            transition: transform 0.2s, background 0.2s;
             margin-top: 10px;
         }
-        .vibe-item {
-            background: #222;
-            padding: 10px;
-            border-radius: 10px;
-            font-size: 0.8rem;
+        .main-btn:hover { background: var(--gold-hover); transform: translateY(-2px); }
+        .main-btn:active { transform: translateY(0); }
+
+        .toggle-text {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        /* Make sure this acts like a button but isn't a link */
+        .toggle-link {
+            color: var(--gold);
+            cursor: pointer;
+            font-weight: 600;
+            margin-left: 5px;
+            text-decoration: underline;
+            text-decoration-color: transparent;
+            transition: text-decoration-color 0.3s;
+        }
+        .toggle-link:hover { text-decoration-color: var(--gold); }
+
+        /* --- Error Box --- */
+        .error-box {
+            background: rgba(255, 80, 80, 0.1);
+            border: 1px solid rgba(255, 80, 80, 0.3);
+            color: #ff8080;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
             display: flex;
             align-items: center;
-            gap: 8px;
-            cursor: pointer;
+            gap: 10px;
         }
-        .vibe-item input { width: auto; margin: 0; }
-
-        .toggle-link { color: var(--gold); text-decoration: none; font-weight: 600; cursor: pointer; }
-        .toggle-link:hover { text-decoration: underline; }
-        
-        .back-home { position: absolute; top: 30px; left: 30px; color: var(--muted); text-decoration: none; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
-    <a href="home.html" class="back-home"><i class="fas fa-arrow-left"></i> Back to Home</a>
+<a href="/" class="back-home"><i class="fas fa-arrow-left"></i> Home</a>
 
-    <div class="auth-wrapper">
-        <div class="auth-flip" id="authFlip">
-            
-            <div class="auth-card auth-front">
-                <h2>Welcome Back</h2>
-                <p>Log in to see who is nearby.</p>
+<div class="auth-wrapper">
+    
+    <div class="auth-flip {{ 'flipped' if show_signup else '' }}" id="authFlip">
 
-                {% if error %}
-                <div style="background:#3b1f00;color:#ffd9a8;padding:10px;border-radius:8px;margin-bottom:12px;">{{ error }}</div>
-                {% endif %}
+        <div class="auth-card auth-front">
+            <h2>Welcome Back</h2>
+            <p>Log in to connect with your vibe.</p>
 
-                <form action="/login" method="POST">
-                    <div class="form-group">
-                        <input type="text" name="username" placeholder="Username" required>
-                    </div>
-                    <div class="form-group">
-                        <input type="password" name="password" placeholder="Password" required>
-                    </div>
-                    <button type="submit" class="main-btn glow" style="width:100%;">Login</button>
-                </form>
-
-                <p style="margin-top:20px;">
-                    New to Spotlight?
-                    <span class="toggle-link" onclick="flipCard()">Create an account</span>
-                </p>
+            {% if error and not show_signup %}
+            <div class="error-box">
+                <i class="fas fa-exclamation-circle"></i> {{ error }}
             </div>
+            {% endif %}
 
-            <div class="auth-card auth-back">
-                <h2>Create Account</h2>
-                <p>Join the community and start meeting.</p>
+            <form action="/login" method="POST">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" placeholder="Enter your username" required>
+                </div>
 
-                <form action="/signup" method="POST">
-                    <div class="form-group">
-                        <input type="text" name="username" placeholder="Pick a Username" required>
-                    </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="Enter your password" required>
+                </div>
 
-                    <div class="form-group">
-                        <select name="gender" required>
-                            <option value="" disabled selected>Your Gender</option>
-                            <option>Male</option>
-                            <option>Female</option>
-                            <option>Other</option>
-                        </select>
-                    </div>
+                <button class="main-btn">Login</button>
+            </form>
 
-                    <div class="form-group">
-                        <input type="password" name="password" placeholder="Create Password" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Pick your Vibe Bubbles:</label>
-                        <div class="vibe-selection">
-                            <label class="vibe-item"><input type="checkbox" name="vibes" value="Coffee"> ☕ Coffee</label>
-                            <label class="vibe-item"><input type="checkbox" name="vibes" value="Study"> 📚 Study</label>
-                            <label class="vibe-item"><input type="checkbox" name="vibes" value="Music"> 🎵 Music</label>
-                            <label class="vibe-item"><input type="checkbox" name="vibes" value="Coding"> 💻 Coding</label>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="main-btn glow" style="width:100%;">Sign Up</button>
-                </form>
-
-                <p style="margin-top:20px;">
-                    Already have an account?
-                    <span class="toggle-link" onclick="flipCard()">Log in</span>
-                </p>
+            <div class="toggle-text">
+                New here? <span class="toggle-link" onclick="flipCard()">Create account</span>
             </div>
         </div>
-    </div>
 
-    <script>
-        function flipCard() {
-            // This simply toggles the class that triggers the CSS transform
-            const container = document.getElementById('authFlip');
-            container.classList.toggle('flipped');
+        <div class="auth-card auth-back">
+            <h2>Create Account</h2>
+            <p>Tell the world who you are.</p>
+
+            {% if error and show_signup %}
+            <div class="error-box">
+                <i class="fas fa-exclamation-circle"></i> {{ error }}
+            </div>
+            {% endif %}
+
+            <form action="/signup" method="POST" onsubmit="return validateAge()">
+                
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" placeholder="Pick a unique username" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Gender</label>
+                        <select name="gender" required>
+                            <option value="" disabled selected>Select</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Date of Birth</label>
+                        <input type="date" name="dob" id="dob" required style="color-scheme: dark;">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Your Vibes (Select all that apply)</label>
+                    <div class="vibe-container">
+                        <input type="checkbox" id="vibe1" name="vibes" value="Chill" class="vibe-checkbox">
+                        <label for="vibe1" class="vibe-label">☕ Chill</label>
+
+                        <input type="checkbox" id="vibe2" name="vibes" value="DeepTalks" class="vibe-checkbox">
+                        <label for="vibe2" class="vibe-label">🗣 Deep Talks</label>
+
+                        <input type="checkbox" id="vibe3" name="vibes" value="Exploring" class="vibe-checkbox">
+                        <label for="vibe3" class="vibe-label">🌍 Exploring</label>
+
+                        <input type="checkbox" id="vibe4" name="vibes" value="LateNights" class="vibe-checkbox">
+                        <label for="vibe4" class="vibe-label">🌙 Late Nights</label>
+
+                        <input type="checkbox" id="vibe5" name="vibes" value="Music" class="vibe-checkbox">
+                        <label for="vibe5" class="vibe-label">🎵 Music</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>About You</label>
+                    <textarea name="bio" maxlength="300" placeholder="Short bio..." rows="2"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="Create a strong password" required>
+                </div>
+
+                <button type="submit" class="main-btn">Sign Up</button>
+            </form>
+
+            <div class="toggle-text">
+                Already registered? <span class="toggle-link" onclick="flipCard()">Log in</span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function flipCard() {
+        document.getElementById("authFlip").classList.toggle("flipped");
+    }
+
+    function validateAge() {
+        const dob = document.getElementById("dob").value;
+        if (!dob) return false;
+
+        const birth = new Date(dob);
+        const today = new Date();
+        let age = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+            age--;
         }
-    </script>
+
+        if (age < 18) {
+            alert("You must be at least 18 years old to join Spotlight.");
+            return false;
+        }
+        return true;
+    }
+</script>
+
 </body>
 </html>
