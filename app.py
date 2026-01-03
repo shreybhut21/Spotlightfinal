@@ -59,25 +59,39 @@ def login():
 def signup():
     username = request.form.get("username")
     password = request.form.get("password")
+    gender = request.form.get("gender")
+    dob = request.form.get("dob")
+    bio = request.form.get("bio", "")
+    vibes = request.form.getlist("vibes")  # multiple checkboxes
+
+    vibe_tags = ",".join(vibes)
 
     conn = db.get_db_connection()
+
     exists = conn.execute(
         "SELECT id FROM users WHERE username = ?", (username,)
     ).fetchone()
 
     if exists:
-        return render_template("auth.html", error="Username already exists")
+        return render_template("auth.html", error="Username already exists", show_signup=True)
 
     pwd_hash = generate_password_hash(password)
 
-    conn.execute(
-        """
+    conn.execute("""
         INSERT INTO users
-        (username, password_hash, trust_score, is_matched, matched_with, is_active, created_at)
-        VALUES (?, ?, 100, 0, NULL, 1, ?)
-        """,
-        (username, pwd_hash, time.time())
-    )
+        (username, password_hash, gender, dob, bio, vibe_tags,
+         trust_score, is_matched, matched_with, is_active, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, 100, 0, NULL, 1, ?)
+    """, (
+        username,
+        pwd_hash,
+        gender,
+        dob,
+        bio,
+        vibe_tags,
+        time.time()
+    ))
+
     conn.commit()
 
     session["user_id"] = conn.execute(
@@ -86,10 +100,14 @@ def signup():
 
     return redirect(url_for("index_html"))
 
+
+
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
+
+from datetime import date
 
 @app.route("/settings")
 def settings():
@@ -101,7 +119,24 @@ def settings():
         "SELECT * FROM users WHERE id = ?", (session["user_id"],)
     ).fetchone()
 
-    return render_template("settings.html", user=user)
+    # calculate age from dob
+    age = None
+    if user["dob"]:
+        y, m, d = map(int, user["dob"].split("-"))
+        today = date.today()
+        age = today.year - y - ((today.month, today.day) < (m, d))
+
+    vibes = []
+    if user["vibe_tags"]:
+        vibes = user["vibe_tags"].split(",")
+
+    return render_template(
+        "settings.html",
+        user=user,
+        age=age,
+        vibes=vibes
+    )
+
 
 @app.route("/index.html")
 def index_html():
