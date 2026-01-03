@@ -45,19 +45,16 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
 
-            -- profile info
             gender TEXT,
             dob TEXT,              -- YYYY-MM-DD
             bio TEXT,
             vibe_tags TEXT,        -- comma-separated
 
-            -- system
             trust_score INTEGER DEFAULT 100,
             avatar_level INTEGER DEFAULT 1,
             avatar_url TEXT,
             is_active INTEGER DEFAULT 1,
 
-            -- match state
             is_matched INTEGER DEFAULT 0,
             matched_with INTEGER,
 
@@ -104,47 +101,18 @@ def init_db():
     # --------------------------------------------------
     # REQUESTS
     # --------------------------------------------------
-    try:
-        existing_req_cols = [r["name"] for r in c.execute("PRAGMA table_info(requests)")]
-    except sqlite3.OperationalError:
-        existing_req_cols = []
-
-    if "spotlight_id" in existing_req_cols:
-        c.execute("ALTER TABLE requests RENAME TO _requests_old")
-
-        c.execute("""
-            CREATE TABLE requests (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sender_id INTEGER NOT NULL,
-                receiver_id INTEGER NOT NULL,
-                status TEXT CHECK(status IN ('pending','accepted','declined'))
-                       DEFAULT 'pending',
-                created_at REAL,
-                FOREIGN KEY(sender_id) REFERENCES users(id),
-                FOREIGN KEY(receiver_id) REFERENCES users(id)
-            )
-        """)
-
-        c.execute("""
-            INSERT INTO requests (id, sender_id, receiver_id, status, created_at)
-            SELECT id, sender_id, receiver_id, status, created_at
-            FROM _requests_old
-        """)
-
-        c.execute("DROP TABLE _requests_old")
-    else:
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS requests (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sender_id INTEGER NOT NULL,
-                receiver_id INTEGER NOT NULL,
-                status TEXT CHECK(status IN ('pending','accepted','declined'))
-                       DEFAULT 'pending',
-                created_at REAL,
-                FOREIGN KEY(sender_id) REFERENCES users(id),
-                FOREIGN KEY(receiver_id) REFERENCES users(id)
-            )
-        """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id INTEGER NOT NULL,
+            receiver_id INTEGER NOT NULL,
+            status TEXT CHECK(status IN ('pending','accepted','declined'))
+                   DEFAULT 'pending',
+            created_at REAL,
+            FOREIGN KEY(sender_id) REFERENCES users(id),
+            FOREIGN KEY(receiver_id) REFERENCES users(id)
+        )
+    """)
 
     # --------------------------------------------------
     # MATCHES
@@ -164,27 +132,24 @@ def init_db():
     """)
 
     # --------------------------------------------------
-    # REVIEWS
+    # REVIEWS (🔥 FIXED)
     # --------------------------------------------------
     c.execute("""
         CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            match_id INTEGER NOT NULL,
             reviewer_id INTEGER NOT NULL,
             reviewed_id INTEGER NOT NULL,
             rating INTEGER CHECK(rating BETWEEN 1 AND 10),
             comment TEXT,
             created_at REAL,
-            FOREIGN KEY(match_id) REFERENCES matches(id),
             FOREIGN KEY(reviewer_id) REFERENCES users(id),
-            FOREIGN KEY(reviewed_id) REFERENCES users(id),
-            UNIQUE(match_id, reviewer_id)
+            FOREIGN KEY(reviewed_id) REFERENCES users(id)
         )
     """)
 
     # Indexes
     c.execute("CREATE INDEX IF NOT EXISTS idx_reviews_reviewed ON reviews(reviewed_id)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_matches_users ON matches(user1_id, user2_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_requests_receiver ON requests(receiver_id)")
 
     conn.commit()
     conn.close()
