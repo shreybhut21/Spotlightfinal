@@ -287,6 +287,7 @@ def respond_request():
 
     sender_id = req["sender_id"]
 
+    # -------- DECLINE --------
     if action == "decline":
         conn.execute(
             "UPDATE requests SET status='declined' WHERE id=?",
@@ -295,13 +296,22 @@ def respond_request():
         conn.commit()
         return jsonify({"status": "declined"})
 
-    # ================= ACCEPT =================
+    # -------- ACCEPT --------
     conn.execute(
         "UPDATE requests SET status='accepted' WHERE id=?",
         (request_id,)
     )
 
-    # 🔥 BOTH USERS ENTER MATCH MODE
+    # 🔥 CREATE MATCH (THIS WAS MISSING)
+    conn.execute(
+        """
+        INSERT INTO matches (user1_id, user2_id, created_at, status)
+        VALUES (?, ?, ?, 'active')
+        """,
+        (sender_id, user_id, time.time())
+    )
+
+    # update users state
     conn.execute(
         "UPDATE users SET is_matched=1, matched_with=? WHERE id=?",
         (sender_id, user_id)
@@ -320,7 +330,8 @@ def respond_request():
     # cancel all other pending requests
     conn.execute(
         """
-        UPDATE requests SET status='declined'
+        UPDATE requests
+        SET status='declined'
         WHERE status='pending'
         AND (sender_id IN (?, ?) OR receiver_id IN (?, ?))
         """,
@@ -329,6 +340,7 @@ def respond_request():
 
     conn.commit()
     return jsonify({"status": "matched"})
+
 
 # ======================================================
 # API – MATCH STATUS
