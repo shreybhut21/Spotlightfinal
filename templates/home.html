@@ -1,54 +1,234 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spotlight | Meet People, Not Profiles</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spotlight | Don’t Swipe. Meet Nearby.</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+
+  <!-- Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --gold: #d4af37;
+      --gold-glow: rgba(212,175,55,0.5);
+      --bg: #050505;
+      --glass: rgba(255,255,255,0.035);
+      --border: rgba(255,255,255,0.1);
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: #e6e6e6;
+      overflow-x: hidden;
+    }
+
+    h1,h2,h3 {
+      font-family: 'Playfair Display', serif;
+    }
+
+    .glass-card {
+      background: var(--glass);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: 26px;
+    }
+
+    .btn-primary {
+      background: var(--gold);
+      color: #000;
+      font-weight: 700;
+      transition: all .3s ease;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 30px var(--gold-glow);
+      background: #e9c95f;
+    }
+
+    .map-grid {
+      background-size: 40px 40px;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+      border-radius: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map-pin {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: var(--gold);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--gold);
+    }
+
+    .map-pin::after {
+      content: '';
+      position: absolute;
+      inset: -18px;
+      border: 1px solid var(--gold);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: .8; transform: scale(.2); }
+      100% { opacity: 0; transform: scale(1); }
+    }
+
+    .footer-link {
+      color: #888;
+      transition: color .3s;
+      display: block;
+      margin-bottom: 12px;
+    }
+    .footer-link:hover { color: var(--gold); }
+  </style>
 </head>
-<body>
 
-    <nav>
-        <div class="logo"><i class="fas fa-lightbulb"></i> Spotlight</div>
-        <div class="nav-links">
-            <a href="/auth" class="nav-btn">Login</a>
-            <a href="/auth" class="nav-btn primary">Join Now</a>
-        </div>
-    </nav>
+<body class="antialiased">
 
-    <header class="hero">
-        <div class="hero-content">
-            <h1>Meet People, <br><span class="highlight">Not Profiles.</span></h1>
-            <p>The no-chat, map-based social app. See who is at your favorite cafe right now and join their table instantly.</p>
-            <div class="hero-btns">
-                <a href="/auth" class="main-btn glow">Get Started Free</a>
-                <button class="sec-btn">See How It Works</button>
-            </div>
-        </div>
-    </header>
+<!-- NAV -->
+<nav class="fixed w-full z-50 top-0 bg-black/80 backdrop-blur border-b border-white/5">
+  <div class="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+    <div class="flex items-center gap-2">
+      <i class="fas fa-map-marked-alt text-[var(--gold)] text-xl"></i>
+      <span class="text-xl font-bold text-white font-serif">Spotlight</span>
+    </div>
+    <a href="/auth" class="btn-primary px-6 py-2 rounded-full text-sm">
+      Open the Map
+    </a>
+  </div>
+</nav>
 
-    <section class="features">
-        <div class="card">
-            <div class="icon-box"><i class="fas fa-bolt"></i></div>
-            <h3>Zero Small Talk</h3>
-            <p>Skip the weeks of texting. Send a request, get accepted, and walk to their table.</p>
-        </div>
-        <div class="card">
-            <div class="icon-box"><i class="fas fa-shield-halved"></i></div>
-            <h3>Trust-Driven</h3>
-            <p>Our Trust Score system ensures you meet people who are respectful and on-time.</p>
-        </div>
-        <div class="card">
-            <div class="icon-box"><i class="fas fa-wallet"></i></div>
-            <h3>Middle-Class Friendly</h3>
-            <p>Built-in bill splitting and "Payment Vibes" mean no awkward money moments.</p>
-        </div>
-    </section>
+<!-- HERO -->
+<section class="min-h-screen flex items-center justify-center px-6 pt-24 text-center relative">
+  <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[var(--gold)] opacity-10 blur-[140px] rounded-full"></div>
 
-    <footer>
-        <p>&copy; 2025 Spotlight Social. Built for the socially brave.</p>
-    </footer>
+  <div class="max-w-4xl z-10">
+    <h1 class="text-5xl md:text-7xl font-bold leading-tight mb-6 text-white">
+      Don’t swipe.<br>
+      <span class="italic text-[var(--gold)]">Meet where you already are.</span>
+    </h1>
+
+    <p class="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto">
+      Spotlight shows real people nearby with real intent — coffee, dates, study, or just a vibe.
+    </p>
+
+    <div class="mt-10">
+      <a href="/auth" class="btn-primary px-12 py-4 rounded-full text-lg inline-flex items-center gap-3">
+        Enter the Map <i class="fas fa-location-arrow"></i>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- EXPERIENCE -->
+<section class="py-24 px-6 bg-white/[0.02] border-y border-white/5">
+  <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+
+    <div>
+      <span class="inline-block mb-4 px-4 py-1 rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 text-[var(--gold)] text-xs font-bold tracking-widest">
+        LIVE SOCIAL MAP
+      </span>
+
+      <h2 class="text-4xl md:text-5xl font-bold mb-6">
+        Your social life,<br> placed in the real world.
+      </h2>
+
+      <p class="text-gray-400 text-lg mb-8">
+        No decks. No algorithms. Just a live map showing who’s nearby and open to meeting — right now.
+      </p>
+
+      <ul class="space-y-4 text-gray-300">
+        <li>📍 Proximity‑based discovery</li>
+        <li>⏳ Time‑limited presence</li>
+        <li>🤝 One match at a time</li>
+        <li>⭐ Trust built from real meetings</li>
+      </ul>
+    </div>
+
+    <div class="glass-card p-4">
+      <div class="map-grid h-80 w-full bg-gray-900 border border-white/10">
+        <div class="absolute top-1/2 left-1/2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white -translate-x-1/2 -translate-y-1/2 shadow-[0_0_20px_#3b82f6]"></div>
+        <div class="map-pin" style="top:35%; left:45%"></div>
+        <div class="map-pin" style="top:60%; left:70%"></div>
+        <div class="map-pin" style="top:25%; left:75%"></div>
+        <div class="map-pin" style="top:70%; left:30%"></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="py-24 px-6 text-center">
+  <div class="max-w-3xl mx-auto glass-card p-12">
+    <h2 class="text-4xl font-bold mb-6">
+      Ready to meet differently?
+    </h2>
+    <p class="text-gray-400 mb-8">
+      Step off the feed. Step into the world.
+    </p>
+    <a href="/auth" class="btn-primary px-12 py-4 rounded-full text-lg">
+      Join Spotlight
+    </a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="bg-black border-t border-white/10 px-6 pt-16 pb-8">
+  <div class="max-w-7xl mx-auto grid md:grid-cols-4 gap-12 mb-12">
+    <div>
+      <div class="flex items-center gap-2 mb-4">
+        <i class="fas fa-map-marked-alt text-[var(--gold)]"></i>
+        <span class="font-serif text-xl font-bold text-white">Spotlight</span>
+      </div>
+      <p class="text-gray-500 text-sm">
+        Real people. Real intent. Right now.
+      </p>
+    </div>
+
+    <div>
+      <h5 class="text-white font-bold mb-4">Product</h5>
+      <a class="footer-link">How it Works</a>
+      <a class="footer-link">Safety</a>
+      <a class="footer-link">Trust Score</a>
+    </div>
+
+    <div>
+      <h5 class="text-white font-bold mb-4">Company</h5>
+      <a class="footer-link">About</a>
+      <a class="footer-link">Careers</a>
+      <a class="footer-link">Contact</a>
+    </div>
+
+    <div>
+      <h5 class="text-white font-bold mb-4">Social</h5>
+      <div class="flex gap-4">
+        <i class="fab fa-instagram text-xl"></i>
+        <i class="fab fa-twitter text-xl"></i>
+        <i class="fab fa-tiktok text-xl"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="text-center text-xs text-gray-600 border-t border-white/5 pt-6">
+    © 2026 Spotlight. Built for real connections.
+  </div>
+</footer>
 
 </body>
 </html>
