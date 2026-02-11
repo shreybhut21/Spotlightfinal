@@ -1,11 +1,4 @@
-<<<<<<< HEAD
 Flask
 Werkzeug
 geopy
 gunicorn
-=======
-Flask
-Werkzeug
-geopy
-gunicorn
->>>>>>> 8d92f08ebc7eed86a263e09180080786465e29cd

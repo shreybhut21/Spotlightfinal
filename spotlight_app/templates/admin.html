@@ -169,7 +169,7 @@
     All Users
     <input id="user-search" placeholder="Search by username or ID" style="flex:1; max-width:260px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:rgba(0,0,0,0.35); color:#fff; font-size:13px; outline:none;">
   </h2>
-  <table class="table" aria-label="Users table">
+  <table class="table" aria-label="Users table" id="users-table">
     <thead>
       <tr>
         <th>ID</th>
@@ -187,9 +187,9 @@
         <td>{{ u.username }}</td>
         <td>{{ u.trust_score }}</td>
         <td class="status">{{ 'Active' if u.is_active else 'Blocked' }}</td>
-        <td>{{ u.created_at|float|int }}</td>
+        <td class="created" data-ts="{{ u.created_at|float }}">—</td>
         <td>
-          <button class="ghost-btn" onclick="toggleUser({{ u.id }}, {{ 1 if u.is_active else 0 }})">{{ 'Block' if u.is_active else 'Unblock' }}</button>
+          <button class="ghost-btn toggle-user-btn" onclick="toggleUser({{ u.id }}, {{ u.is_active|int }})">{{ 'Block' if u.is_active else 'Unblock' }}</button>
           <button class="ghost-btn" style="border-color:#f87171;color:#fca5a5;" onclick="deleteUser({{ u.id }})">Delete</button>
         </td>
       </tr>
@@ -209,7 +209,7 @@
     if (searchInput) {
       searchInput.addEventListener('input', () => {
         const term = searchInput.value.toLowerCase().trim();
-        document.querySelectorAll('tbody tr').forEach(row => {
+        document.querySelectorAll('#users-table tbody tr').forEach(row => {
           const id = row.getAttribute('data-user') || '';
           const name = (row.children[1]?.innerText || '').toLowerCase();
           const match = id.includes(term) || name.includes(term);
@@ -217,6 +217,13 @@
         });
       });
     }
+
+    // Render human-friendly timestamps
+    document.querySelectorAll('#users-table .created[data-ts]').forEach(el => {
+      const ts = parseFloat(el.getAttribute('data-ts'));
+      if (!ts) return;
+      el.innerText = new Date(ts * 1000).toLocaleString();
+    });
 
     async function toggleUser(id, currentlyActive) {
       const action = currentlyActive ? 'block' : 'unblock';
@@ -228,9 +235,13 @@
       if (!res.ok) { alert('Action failed'); return; }
       const row = document.querySelector(`tr[data-user="${id}"]`);
       if (row) {
-        row.querySelector('.status').innerText = action === 'block' ? 'Blocked' : 'Active';
-        row.querySelector('button').innerText = action === 'block' ? 'Unblock' : 'Block';
-        row.querySelector('button').setAttribute('onclick', `toggleUser(${id}, ${action === 'block' ? 0 : 1})`);
+        const statusEl = row.querySelector('.status');
+        const toggleBtn = row.querySelector('.toggle-user-btn');
+        if (statusEl) statusEl.innerText = action === 'block' ? 'Blocked' : 'Active';
+        if (toggleBtn) {
+          toggleBtn.innerText = action === 'block' ? 'Unblock' : 'Block';
+          toggleBtn.setAttribute('onclick', `toggleUser(${id}, ${action === 'block' ? 0 : 1})`);
+        }
       }
     }
 

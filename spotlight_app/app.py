@@ -6,7 +6,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from geopy.distance import geodesic
 import csv
 import io
-import db
+
+try:
+    from . import db
+except ImportError:  # allow running as standalone script
+    import db  # type: ignore
 
 # ======================================================
 # APP SETUP
