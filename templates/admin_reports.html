@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Reports</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --panel: rgba(24,24,28,0.9);
+      --border: rgba(255,255,255,0.08);
+      --text: #f7f7f7;
+      --muted: #9ca3af;
+    }
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at 15% 25%, rgba(255,215,0,0.08), transparent 35%), #0d0d0f;
+      color: var(--text);
+      min-height: 100vh;
+      padding: 26px 20px 40px;
+    }
+    header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+    .title { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+    .pill {
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    }
+    .table th, .table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      text-align: left;
+    }
+    .table th { text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+    .table tr:last-child td { border-bottom: none; }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: rgba(255,215,0,0.14);
+      color: #ffd700;
+    }
+    .muted { color: var(--muted); font-size: 12px; }
+    .danger-btn {
+      background: rgba(255,0,0,0.1);
+      border: 1px solid rgba(255,99,132,0.35);
+      color: #ff6b81;
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .danger-btn:hover { background: rgba(255,0,0,0.16); }
+  </style>
+</head>
+<body>
+  <header style="gap:12px; flex-wrap: wrap;">
+    <div class="title">Reports Inbox</div>
+    <div style="display:flex; gap:8px; flex-wrap: wrap;">
+      <a class="pill" href="/admin">← Back to Admin</a>
+      <a class="pill" href="/admin/reports/export">Export CSV</a>
+    </div>
+  </header>
+
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+    <input id="report-search" placeholder="Search message/reporter/target" style="flex:1; min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:rgba(0,0,0,0.35); color:#fff; font-size:13px; outline:none;">
+    <div style="display:flex;gap:6px;">
+      <button class="pill" style="cursor:pointer;" onclick="filterType('all')">All</button>
+      <button class="pill" style="cursor:pointer;" onclick="filterType('user')">User</button>
+      <button class="pill" style="cursor:pointer;" onclick="filterType('app')">App</button>
+    </div>
+  </div>
+
+  <table class="table" aria-label="Reports table" id="reports-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Type</th>
+        <th>Message</th>
+        <th>Reporter</th>
+        <th>Target</th>
+        <th>Created</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if reports %}
+        {% for r in reports %}
+        <tr>
+          <td>{{ r.id }}</td>
+          <td data-type="{{ r.type }}"><span class="badge">{{ r.type }}</span></td>
+          <td class="msg">{{ r.message }}</td>
+          <td class="rep">{{ r.reporter or '—' }}</td>
+          <td class="tgt">{{ r.target or '—' }}</td>
+          <td class="muted" data-ts="{{ (r.created_at | float) }}">—</td>
+          <td><button class="danger-btn" onclick="deleteReport({{ r.id }})">Delete</button></td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="7" class="muted" style="text-align:center;">No reports yet.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+  <script>
+    const searchInput = document.getElementById('report-search');
+    function filterRows() {
+      const term = (searchInput?.value || '').toLowerCase();
+      const typeFilter = window._reportType || 'all';
+      document.querySelectorAll('#reports-table tbody tr').forEach(row => {
+        const type = row.querySelector('td[data-type]')?.getAttribute('data-type') || '';
+        const msg = row.querySelector('.msg')?.innerText.toLowerCase() || '';
+        const rep = row.querySelector('.rep')?.innerText.toLowerCase() || '';
+        const tgt = row.querySelector('.tgt')?.innerText.toLowerCase() || '';
+        const matchType = typeFilter === 'all' || type === typeFilter;
+        const matchTerm = !term || msg.includes(term) || rep.includes(term) || tgt.includes(term);
+        row.style.display = matchType && matchTerm ? '' : 'none';
+      });
+    }
+    function filterType(t) { window._reportType = t; filterRows(); }
+    if (searchInput) searchInput.addEventListener('input', filterRows);
+
+    // human friendly dates
+    document.querySelectorAll('[data-ts]').forEach(el => {
+      const ts = parseFloat(el.getAttribute('data-ts')) || 0;
+      if (!ts) return;
+      const d = new Date(ts * 1000);
+      el.innerText = d.toLocaleString();
+    });
+
+    async function deleteReport(id){
+      if (!confirm('Delete report #' + id + '?')) return;
+      const res = await fetch('/admin/reports/delete', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({report_id:id})
+      });
+      if(!res.ok){
+        alert('Failed to delete');
+        return;
+      }
+      const row = Array.from(document.querySelectorAll('#reports-table tbody tr')).find(r => r.cells[0]?.innerText == id);
+      if(row) row.remove();
+    }
+  </script>
+</body>
+</html>
