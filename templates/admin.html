@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotlight · Admin</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: radial-gradient(circle at 20% 20%, rgba(255,215,0,0.08), transparent 35%), #0d0d0f;
+      --panel: rgba(24,24,28,0.9);
+      --border: rgba(255,255,255,0.06);
+      --text: #f7f7f7;
+      --muted: #9ca3af;
+      --accent: #ffd700;
+      --shadow: 0 20px 60px rgba(0,0,0,0.45);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 28px 22px 40px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    .title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 9px 14px;
+      box-shadow: var(--shadow);
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .card i { color: var(--accent); }
+    .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+    .value { font-size: 28px; font-weight: 800; margin-top: 6px; }
+    .sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .inline-actions { margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .ghost-btn, .primary-btn {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+      background: transparent;
+      color: var(--text);
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+    .primary-btn {
+      background: linear-gradient(120deg, #ffdf5e, #ffd700);
+      color: #000;
+      border: none;
+      box-shadow: 0 10px 30px rgba(255,215,0,0.25);
+    }
+    .ghost-btn:hover, .primary-btn:hover { transform: translateY(-1px); }
+    .table {
+      margin-top: 22px;
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .table th, .table td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .table th { text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+    .table tr:last-child td { border-bottom: none; }
+    @media (max-width: 600px) { header { flex-direction: column; align-items: flex-start; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">Admin Dashboard</div>
+    <div>
+      <a class="pill" href="/index.html"><i class="fas fa-arrow-left"></i> Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <div class="label">Total Users</div>
+      <div class="value">{{ stats.total_users }}</div>
+      <div class="sub">Registered accounts</div>
+    </div>
+    <div class="card">
+      <div class="label">Live Spotlights</div>
+      <div class="value">{{ stats.active_spotlights }}</div>
+      <div class="sub">Currently visible within 5 km</div>
+    </div>
+    <div class="card">
+      <div class="label">Active Matches</div>
+      <div class="value">{{ stats.active_matches }}</div>
+      <div class="sub">Pairs still in session</div>
+    </div>
+    <div class="card">
+      <div class="label">Total Reviews</div>
+      <div class="value">{{ stats.total_reviews }}</div>
+      <div class="sub">Feedback submitted</div>
+    </div>
+    <div class="card">
+      <div class="label">Avg Trust Score</div>
+      <div class="value">{{ stats.avg_trust or '—' }}</div>
+      <div class="sub">Across all users</div>
+    </div>
+  </div>
+
+  <table class="table" aria-label="Admin quick links">
+    <thead>
+      <tr><th>Action</th><th>Details</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Export data</td>
+        <td>Hook up a CSV/JSON export endpoint here.</td>
+      </tr>
+      <tr>
+        <td>Moderation queue</td>
+        <td>Surface reported users or low scores for review.</td>
+      </tr>
+      <tr>
+        <td>System health</td>
+        <td>Add uptime / error-rate widgets if needed.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 style="margin-top:26px;margin-bottom:10px;font-size:18px; display:flex; align-items:center; gap:12px;">
+    All Users
+    <input id="user-search" placeholder="Search by username or ID" style="flex:1; max-width:260px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:rgba(0,0,0,0.35); color:#fff; font-size:13px; outline:none;">
+  </h2>
+  <table class="table" aria-label="Users table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Trust</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr data-user="{{ u.id }}">
+        <td>{{ u.id }}</td>
+        <td>{{ u.username }}</td>
+        <td>{{ u.trust_score }}</td>
+        <td class="status">{{ 'Active' if u.is_active else 'Blocked' }}</td>
+        <td>{{ u.created_at|float|int }}</td>
+        <td>
+          <button class="ghost-btn" onclick="toggleUser({{ u.id }}, {{ 1 if u.is_active else 0 }})">{{ 'Block' if u.is_active else 'Unblock' }}</button>
+          <button class="ghost-btn" style="border-color:#f87171;color:#fca5a5;" onclick="deleteUser({{ u.id }})">Delete</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="inline-actions">
+    <button class="ghost-btn" onclick="window.location.href='/admin/reports'">Reports</button>
+    <button class="ghost-btn" onclick="window.location.href='/admin/reports/export'">Export CSV</button>
+    <button class="primary-btn" onclick="location.reload()">Refresh</button>
+    <button class="ghost-btn" onclick="window.location.href='/'">Go to Landing</button>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('user-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        const term = searchInput.value.toLowerCase().trim();
+        document.querySelectorAll('tbody tr').forEach(row => {
+          const id = row.getAttribute('data-user') || '';
+          const name = (row.children[1]?.innerText || '').toLowerCase();
+          const match = id.includes(term) || name.includes(term);
+          row.style.display = match ? '' : 'none';
+        });
+      });
+    }
+
+    async function toggleUser(id, currentlyActive) {
+      const action = currentlyActive ? 'block' : 'unblock';
+      const res = await fetch('/admin/toggle_user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_id: id, action })
+      });
+      if (!res.ok) { alert('Action failed'); return; }
+      const row = document.querySelector(`tr[data-user="${id}"]`);
+      if (row) {
+        row.querySelector('.status').innerText = action === 'block' ? 'Blocked' : 'Active';
+        row.querySelector('button').innerText = action === 'block' ? 'Unblock' : 'Block';
+        row.querySelector('button').setAttribute('onclick', `toggleUser(${id}, ${action === 'block' ? 0 : 1})`);
+      }
+    }
+
+    async function deleteUser(id) {
+      if (!confirm('Delete this user? This removes their data.')) return;
+      const res = await fetch('/admin/delete_user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_id: id })
+      });
+      if (!res.ok) { alert('Delete failed'); return; }
+      const row = document.querySelector(`tr[data-user="${id}"]`);
+      if (row) row.remove();
+    }
+  </script>
+</body>
+</html>
