@@ -62,7 +62,7 @@
     ========================== -->
     <div id="live-indicator" class="live-status hidden">
       <div class="pulsing-dot"></div>
-      <span>You are Live (5 km)</span>
+      <span>You are Live</span>
       <button onclick="turnOffSpotlight()" class="text-btn">OFF</button>
     </div>
 
@@ -89,7 +89,7 @@
 
       <div class="sheet-body">
         <h2>Go Spotlight</h2>
-        <p class="subtitle">Visible within 5 km</p>
+        <p class="subtitle">Visible to active users</p>
 
         <div class="input-group">
           <input id="place" placeholder="Where are you? (Starbucks, Library)">
@@ -100,7 +100,7 @@
         </div>
 
         <div class="input-group">
-          <input id="meet_time" type="time">
+          <input id="meet_time" type="datetime-local">
         </div>
 
         <div class="input-group">
@@ -143,17 +143,42 @@
       </div>
 
       <div class="sheet-body">
-        <p id="p-place"></p>
-        <p id="p-intent"></p>
-        <p id="p-time"></p>
-        <p id="p-distance"></p>
-        <div id="p-clue-wrap" class="hidden">
+        <div class="profile-field">
+          <p class="profile-field-label">Place / Location</p>
+          <p class="profile-field-value" id="p-place"></p>
+        </div>
+
+        <div class="profile-field">
+          <p class="profile-field-label">Purpose</p>
+          <p class="profile-field-value" id="p-intent"></p>
+        </div>
+
+        <div class="profile-field">
+          <p class="profile-field-label">Meeting Time / Arrival</p>
+          <p class="profile-field-value" id="p-time"></p>
+        </div>
+
+        <div id="p-clue-wrap" class="hidden profile-field">
+          <p class="profile-field-label">How To Recognize Me</p>
           <div class="visual-clue" id="p-clue"></div>
         </div>
-        <div id="p-bio-wrap" class="hidden">
+
+        <div id="p-bio-wrap" class="hidden profile-field">
+          <p class="profile-field-label">About Me / Bio</p>
           <div class="profile-bio" id="p-bio"></div>
         </div>
-        <div id="p-vibes-wrap" class="hidden profile-vibes"></div>
+
+        <div class="profile-field hidden" id="p-vibes-group">
+          <p class="profile-field-label">Hobbies</p>
+          <div id="p-vibes-wrap" class="profile-vibes"></div>
+        </div>
+
+        <div class="profile-field hidden" id="p-feedback-group">
+          <details id="p-feedback-dropdown" class="profile-feedback-dropdown">
+            <summary id="p-feedback-summary" class="profile-field-label">Past Feedback</summary>
+            <div id="p-feedback-wrap" class="profile-feedback-list"></div>
+          </details>
+        </div>
 
         <div class="action-row">
           <button class="secondary-btn" onclick="closeAllSheets()">Cancel</button>
@@ -172,10 +197,79 @@
   ========================== -->
   <div id="match-view" class="match-overlay hidden">
     <div class="match-card">
-      <h2>You're in match mode</h2>
-      <p>Have a great date!</p>
-      <div class="match-actions" style="justify-content:center;">
-        <button class="primary-btn" onclick="endMatch()">End Match</button>
+      <button class="match-help-btn" onclick="toggleMatchHelp()" title="How this works">i</button>
+      <div id="match-help-box" class="match-help-box hidden">
+        <strong>What to do</strong>
+        <p>1. Press <b>I Reached</b> when you arrive.</p>
+        <p>2. If plans change before reaching, use <b>Emergency End Match</b>.</p>
+        <p>3. After reaching, use <b>End Match</b> when done.</p>
+      </div>
+      <h2>Match Timeline</h2>
+      <p class="muted">Stay aligned and keep updates clear.</p>
+
+      <div class="timeline-track">
+        <div class="timeline-step is-active" id="tl-matched">
+          <div class="timeline-dot"></div>
+          <span>Matched</span>
+        </div>
+        <div class="timeline-step" id="tl-way">
+          <div class="timeline-dot"></div>
+          <span>On the way</span>
+        </div>
+        <div class="timeline-step" id="tl-reached">
+          <div class="timeline-dot"></div>
+          <span>Reached</span>
+        </div>
+        <div class="timeline-step" id="tl-ended">
+          <div class="timeline-dot"></div>
+          <span>Ended</span>
+        </div>
+      </div>
+
+      <div class="reached-pill-row">
+        <div id="reach-pill-you" class="reached-pill">You: On the way</div>
+        <div id="reach-pill-match" class="reached-pill">Match: On the way</div>
+      </div>
+
+      <p id="reached-status" class="muted timeline-status"></p>
+      <div class="match-actions">
+        <button id="reached-btn" class="secondary-btn" onclick="markReached()">I Reached</button>
+        <button id="end-match-btn" class="primary-btn" onclick="handleMatchEndAction()">Emergency End Match</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="end-match-modal" class="end-match-modal hidden">
+    <div class="end-match-card">
+      <h3>End Match</h3>
+      <p class="muted">If you have not reached yet, select a reason (or write one).</p>
+      <div id="end-reason-chips" class="reason-chip-wrap">
+        <button type="button" class="reason-chip" data-reason="Running late and cannot make it.">Running late</button>
+        <button type="button" class="reason-chip" data-reason="Emergency came up. Sorry for the inconvenience.">Emergency</button>
+        <button type="button" class="reason-chip" data-reason="Location mismatch and unable to find each other.">Location mismatch</button>
+        <button type="button" class="reason-chip" data-reason="Need to reschedule for another time.">Need to reschedule</button>
+      </div>
+      <textarea id="end-reason-text" placeholder="Optional details (max 50 words)"></textarea>
+      <div id="end-reason-counter" class="muted">0 / 50 words</div>
+      <div id="end-reason-error" class="reason-error hidden"></div>
+      <div class="action-row">
+        <button class="secondary-btn" onclick="closeEndMatchModal()">Cancel</button>
+        <button class="primary-btn" onclick="confirmEndMatch()">Confirm End</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================
+       POST MATCH VIEW (hidden)
+  ========================== -->
+  <div id="post-match-view" class="hidden post-match-view">
+    <div class="post-match-card">
+      <h2 id="post-match-title">Match Completed</h2>
+      <p id="post-match-subtitle" class="muted"></p>
+      <div id="post-match-badge" class="post-match-badge">After meetup</div>
+      <div id="post-match-reason" class="end-by-other-note hidden"></div>
+      <div class="action-row">
+        <button id="post-match-cta" onclick="proceedToFeedback()" class="primary-btn">Continue to Rating</button>
       </div>
     </div>
   </div>
@@ -193,7 +287,6 @@
         style="width:90%;max-width:400px;height:80px;"></textarea>
       <div class="action-row">
         <button onclick="submitFeedback()" class="primary-btn">Submit</button>
-        <button onclick="backToMap()" class="secondary-btn">Back</button>
       </div>
     </div>
   </div>

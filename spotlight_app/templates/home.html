@@ -95,6 +95,25 @@
       margin-bottom: 12px;
     }
     .footer-link:hover { color: var(--gold); }
+
+    .use-pill {
+      border: 1px solid rgba(212,175,55,0.35);
+      background: rgba(212,175,55,0.08);
+      color: #f3deb0;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      line-height: 1;
+    }
+
+    .social-icon-link {
+      color: #a0a0a0;
+      transition: all .25s ease;
+    }
+    .social-icon-link:hover {
+      color: var(--gold);
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 
@@ -173,6 +192,59 @@
   </div>
 </section>
 
+<!-- USE CASES -->
+<section class="py-20 px-6">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-10">
+      <span class="inline-block mb-3 px-4 py-1 rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 text-[var(--gold)] text-xs font-bold tracking-widest">
+        POPULAR USES
+      </span>
+      <h2 class="text-4xl md:text-5xl font-bold mb-3">Use Spotlight for real plans</h2>
+      <p class="text-gray-400 max-w-2xl mx-auto">
+        Use it when you want to meet nearby people for a cafe, a movie, a walk, study sessions, or just good conversation.
+      </p>
+    </div>
+
+    <div class="flex flex-wrap justify-center gap-3">
+      <span class="use-pill">Cafe Meet</span>
+      <span class="use-pill">Movie Plan</span>
+      <span class="use-pill">Evening Walk</span>
+      <span class="use-pill">Study Partner</span>
+      <span class="use-pill">Gym Buddy</span>
+      <span class="use-pill">Networking</span>
+      <span class="use-pill">Food Hop</span>
+      <span class="use-pill">Travel Companion</span>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="py-20 px-6 bg-white/[0.02] border-y border-white/5">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-12">
+      <h2 class="text-4xl font-bold mb-3">How it works</h2>
+      <p class="text-gray-400">Simple flow. No endless scrolling.</p>
+    </div>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="glass-card p-7">
+        <div class="text-[var(--gold)] text-xl mb-3"><i class="fas fa-location-dot"></i></div>
+        <h3 class="text-2xl mb-2">1. Go Live</h3>
+        <p class="text-gray-400">Add place, intent, and timing so others know what you are up for.</p>
+      </div>
+      <div class="glass-card p-7">
+        <div class="text-[var(--gold)] text-xl mb-3"><i class="fas fa-paper-plane"></i></div>
+        <h3 class="text-2xl mb-2">2. Match Intentionally</h3>
+        <p class="text-gray-400">Send or receive requests and connect one match at a time.</p>
+      </div>
+      <div class="glass-card p-7">
+        <div class="text-[var(--gold)] text-xl mb-3"><i class="fas fa-star"></i></div>
+        <h3 class="text-2xl mb-2">3. Meet and Review</h3>
+        <p class="text-gray-400">After meetup, share feedback and build trust score over time.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- FINAL CTA -->
 <section class="py-24 px-6 text-center">
   <div class="max-w-3xl mx-auto glass-card p-12">
@@ -181,6 +253,11 @@
     </h2>
     <p class="text-gray-400 mb-8">
       Step off the feed. Step into the world.
+    </p>
+    <p class="text-gray-500 text-sm mb-8">
+      Review our
+      <a href="/policy" class="text-[var(--gold)] hover:underline">Safety & Policy</a>
+      before meeting.
     </p>
     <a href="/auth" class="btn-primary px-12 py-4 rounded-full text-lg">
       Join Spotlight
@@ -203,8 +280,8 @@
 
     <div>
       <h5 class="text-white font-bold mb-4">Product</h5>
-      <a class="footer-link">How it Works</a>
-      <a class="footer-link">Safety</a>
+      <a href="/auth" class="footer-link">How it Works</a>
+      <a href="/policy" class="footer-link">Safety & Policy</a>
       <a class="footer-link">Trust Score</a>
     </div>
 
@@ -218,9 +295,15 @@
     <div>
       <h5 class="text-white font-bold mb-4">Social</h5>
       <div class="flex gap-4">
-        <i class="fab fa-instagram text-xl"></i>
-        <i class="fab fa-twitter text-xl"></i>
-        <i class="fab fa-tiktok text-xl"></i>
+        <a class="social-icon-link" href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+          <i class="fab fa-instagram text-xl"></i>
+        </a>
+        <a class="social-icon-link" href="https://wa.me" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
+          <i class="fab fa-whatsapp text-xl"></i>
+        </a>
+        <a class="social-icon-link" href="mailto:support@spotlight.app" aria-label="Email">
+          <i class="fas fa-envelope text-xl"></i>
+        </a>
       </div>
     </div>
   </div>

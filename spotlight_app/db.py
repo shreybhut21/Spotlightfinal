@@ -43,6 +43,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
+            email TEXT,
             password_hash TEXT NOT NULL,
 
             gender TEXT,
@@ -70,6 +71,7 @@ def init_db():
             c.execute(sql)
 
     add_col("gender", "ALTER TABLE users ADD COLUMN gender TEXT")
+    add_col("email", "ALTER TABLE users ADD COLUMN email TEXT")
     add_col("dob", "ALTER TABLE users ADD COLUMN dob TEXT")
     add_col("bio", "ALTER TABLE users ADD COLUMN bio TEXT")
     add_col("vibe_tags", "ALTER TABLE users ADD COLUMN vibe_tags TEXT")
@@ -157,12 +159,28 @@ def init_db():
             user2_id INTEGER NOT NULL,
             created_at REAL,
             ended_at REAL,
+            user1_reached INTEGER DEFAULT 0,
+            user2_reached INTEGER DEFAULT 0,
+            end_reason TEXT,
+            end_reason_by INTEGER,
             status TEXT CHECK(status IN ('active','ended'))
                    DEFAULT 'active',
             FOREIGN KEY(user1_id) REFERENCES users(id),
-            FOREIGN KEY(user2_id) REFERENCES users(id)
+            FOREIGN KEY(user2_id) REFERENCES users(id),
+            FOREIGN KEY(end_reason_by) REFERENCES users(id)
         )
     """)
+
+    # auto-migrate new match fields for existing databases
+    match_cols = [r["name"] for r in c.execute("PRAGMA table_info(matches)")]
+    if "user1_reached" not in match_cols:
+        c.execute("ALTER TABLE matches ADD COLUMN user1_reached INTEGER DEFAULT 0")
+    if "user2_reached" not in match_cols:
+        c.execute("ALTER TABLE matches ADD COLUMN user2_reached INTEGER DEFAULT 0")
+    if "end_reason" not in match_cols:
+        c.execute("ALTER TABLE matches ADD COLUMN end_reason TEXT")
+    if "end_reason_by" not in match_cols:
+        c.execute("ALTER TABLE matches ADD COLUMN end_reason_by INTEGER")
 
     # --------------------------------------------------
     # REVIEWS (migrate legacy score -> rating)
@@ -210,6 +228,7 @@ def init_db():
     # Indexes
     c.execute("CREATE INDEX IF NOT EXISTS idx_reviews_reviewed ON reviews(reviewed_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_requests_receiver ON requests(receiver_id)")
+    c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email)")
 
     # --------------------------------------------------
     # REPORTS (user reports + app feedback)

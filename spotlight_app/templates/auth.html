@@ -250,7 +250,7 @@ input:focus,select:focus,textarea:focus{
 /* ===== OAUTH ===== */
 .oauth{
   display:grid;
-  grid-template-columns:1fr 1fr;
+  grid-template-columns:1fr;
   gap:10px;
   margin-bottom:16px;
 }
@@ -261,6 +261,7 @@ input:focus,select:focus,textarea:focus{
   border:1px solid var(--border);
   background:#000;
   color:#fff;
+  text-decoration:none;
   font-size:.83rem;
   display:flex;
   align-items:center;
@@ -290,6 +291,16 @@ input:focus,select:focus,textarea:focus{
 }
 
 .toggle span:hover{color:var(--gold)}
+
+.error-box{
+  background: rgba(220, 38, 38, 0.14);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
 </style>
 </head>
 
@@ -311,10 +322,12 @@ input:focus,select:focus,textarea:focus{
   <div class="card-content">
     <h2>Spotlight</h2>
     <p class="subtitle">See who’s nearby right now</p>
+    {% if error and not show_signup %}
+    <div class="error-box">{{ error }}</div>
+    {% endif %}
 
     <div class="oauth">
-      <div class="oauth-btn"><i class="fab fa-google"></i> Google</div>
-      <div class="oauth-btn"><i class="fab fa-apple"></i> Apple</div>
+      <a class="oauth-btn" href="/auth/google"><i class="fab fa-google"></i> Google</a>
     </div>
 
     <form action="/login" method="POST">
@@ -338,44 +351,23 @@ input:focus,select:focus,textarea:focus{
   <div class="card-content">
     <h2>Create Profile</h2>
     <p class="subtitle">Your intent. Your location.</p>
+    {% if error and show_signup %}
+    <div class="error-box">{{ error }}</div>
+    {% endif %}
 
-    <form action="/signup" method="POST" onsubmit="return validateAge()">
+    <div class="oauth">
+      <a class="oauth-btn" href="/auth/google"><i class="fab fa-google"></i> Continue with Google</a>
+    </div>
+
+    <form action="/signup" method="POST">
       <div class="group">
         <label>Username</label>
         <input name="username" required>
       </div>
 
-      <div class="row">
-        <div class="group" style="flex:1">
-          <label>Gender</label>
-          <select name="gender" required>
-            <option disabled selected>Select</option>
-            <option>Male</option>
-            <option>Female</option>
-            <option>Other</option>
-          </select>
-        </div>
-        <div class="group" style="flex:1">
-          <label>Birth Date</label>
-          <input type="date" id="dob" name="dob" required style="color-scheme:dark">
-        </div>
-      </div>
-
       <div class="group">
-        <label>Your Vibes</label>
-        <div class="vibes">
-          <input id="v1" type="checkbox" name="vibes" value="Chill">
-          <label class="vibe" for="v1">☕ Chill</label>
-
-          <input id="v2" type="checkbox" name="vibes" value="DeepTalks">
-          <label class="vibe" for="v2">💬 Deep</label>
-
-          <input id="v3" type="checkbox" name="vibes" value="Exploring">
-          <label class="vibe" for="v3">🌍 Explore</label>
-
-          <input id="v4" type="checkbox" name="vibes" value="Drinks">
-          <label class="vibe" for="v4">🍸 Drinks</label>
-        </div>
+        <label>Email</label>
+        <input type="email" name="email" placeholder="you@example.com" required>
       </div>
 
       <div class="group">
@@ -384,14 +376,11 @@ input:focus,select:focus,textarea:focus{
       </div>
 
       <div class="group">
-        <label>Bio</label>
-        <textarea name="bio" maxlength="280" placeholder="Share a short intro (max 280 chars)"></textarea>
-      </div>
-
-      <div class="group">
         <label>Password</label>
         <input type="password" name="password" required>
       </div>
+
+      <p class="subtitle" style="margin:0 0 6px;text-align:left;">You will fill profile details on the next page.</p>
 
       <button class="btn">Join Spotlight</button>
     </form>
@@ -406,15 +395,6 @@ input:focus,select:focus,textarea:focus{
 <script>
 function flip(){
   document.getElementById("flip").classList.toggle("flipped")
-}
-function validateAge(){
-  const d=document.getElementById("dob").value;
-  if(!d)return false;
-  const b=new Date(d),t=new Date();
-  let a=t.getFullYear()-b.getFullYear();
-  if(t.getMonth()<b.getMonth()||(t.getMonth()==b.getMonth()&&t.getDate()<b.getDate()))a--;
-  if(a<18){alert("You must be 18+ to join Spotlight.");return false;}
-  return true;
 }
 </script>
 </body>

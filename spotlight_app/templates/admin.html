@@ -112,9 +112,7 @@
 <body>
   <header>
     <div class="title">Admin Dashboard</div>
-    <div>
-      <a class="pill" href="/index.html"><i class="fas fa-arrow-left"></i> Back to app</a>
-    </div>
+    
   </header>
 
   <div class="grid">
@@ -126,7 +124,7 @@
     <div class="card">
       <div class="label">Live Spotlights</div>
       <div class="value">{{ stats.active_spotlights }}</div>
-      <div class="sub">Currently visible within 5 km</div>
+      <div class="sub">Currently visible to active users</div>
     </div>
     <div class="card">
       <div class="label">Active Matches</div>
@@ -145,25 +143,7 @@
     </div>
   </div>
 
-  <table class="table" aria-label="Admin quick links">
-    <thead>
-      <tr><th>Action</th><th>Details</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Export data</td>
-        <td>Hook up a CSV/JSON export endpoint here.</td>
-      </tr>
-      <tr>
-        <td>Moderation queue</td>
-        <td>Surface reported users or low scores for review.</td>
-      </tr>
-      <tr>
-        <td>System health</td>
-        <td>Add uptime / error-rate widgets if needed.</td>
-      </tr>
-    </tbody>
-  </table>
+  
 
   <h2 style="margin-top:26px;margin-bottom:10px;font-size:18px; display:flex; align-items:center; gap:12px;">
     All Users
@@ -201,7 +181,6 @@
     <button class="ghost-btn" onclick="window.location.href='/admin/reports'">Reports</button>
     <button class="ghost-btn" onclick="window.location.href='/admin/reports/export'">Export CSV</button>
     <button class="primary-btn" onclick="location.reload()">Refresh</button>
-    <button class="ghost-btn" onclick="window.location.href='/'">Go to Landing</button>
   </div>
 
   <script>

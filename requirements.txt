@@ -2,3 +2,6 @@ Flask
 Werkzeug
 geopy
 gunicorn
+Authlib
+python-dotenv
+requests

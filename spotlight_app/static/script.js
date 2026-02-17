@@ -9,9 +9,12 @@ let nearbyMarkers = [];
 let selectedUserId = null;
 let nearbyUsers = [];
 let currentRequestId = null;
+let incomingRequestData = null;
+let appNotifications = [];
 let locationReady = false;
 let requestPoller = null;
 let matchPoller = null;
+let trustPoller = null;
 let isMatched = false;
 // 🔥 view feedback state
 let myFeedbackList = [];
@@ -19,6 +22,15 @@ let myFeedbackList = [];
 // 🔥 feedback state
 let feedbackTargetId = null;
 let selectedRating = 0;
+let feedbackRequired = false;
+let activeFeedbackProfileUserId = null;
+let myReachedInCurrentMatch = false;
+let otherReachedInCurrentMatch = false;
+let currentMatchId = null;
+let lastReachedNoticeMatchId = null;
+let lastEndReasonNoticeMatchId = null;
+let selectedEndReason = "";
+let pendingFeedbackUsername = "";
 
 // GPS smoothing
 let lastPositions = [];
@@ -27,34 +39,45 @@ let hasFirstFix = false;
 
 // simple view toggler with explicit display control (prevents stuck overlays)
 function showSection(sectionId) {
-  ["app-shell", "match-view", "feedback-view"].forEach(id => {
+  ["app-shell", "match-view", "post-match-view", "feedback-view"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const isTarget = id === sectionId;
     el.classList.toggle("hidden", !isTarget);
     if (isTarget) {
-      // match view uses flex, others block
-      el.style.display = id === "match-view" ? "flex" : "block";
+      const flexViews = ["match-view", "post-match-view", "feedback-view"];
+      el.style.display = flexViews.includes(id) ? "flex" : "block";
     } else {
       el.style.display = "none";
     }
   });
+
+  if (sectionId !== "match-view") {
+    closeEndMatchModal();
+    const helpBox = document.getElementById("match-help-box");
+    if (helpBox) helpBox.classList.add("hidden");
+  }
 }
 
 // ==========================
 // INIT
 // ==========================
 document.addEventListener("DOMContentLoaded", () => {
-  // force-hide match/feedback overlays on load in case of cached state
+  // force-hide overlays on load in case of cached state
   const mv = document.getElementById("match-view");
+  const pmv = document.getElementById("post-match-view");
   const fv = document.getElementById("feedback-view");
   const app = document.getElementById("app-shell");
   if (mv) { mv.classList.add("hidden"); mv.style.display = "none"; }
+  if (pmv) { pmv.classList.add("hidden"); pmv.style.display = "none"; }
   if (fv) { fv.classList.add("hidden"); fv.style.display = "none"; }
   if (app) { app.classList.remove("hidden"); app.style.display = "block"; }
 
   initMap();
+  initEndMatchReasonUI();
   fetchUserInfo();
+  startTrustPoller();
+  syncLiveIndicator();
   startRequestPoller();
   startMatchPoller();
 });
@@ -62,6 +85,68 @@ document.addEventListener("DOMContentLoaded", () => {
 function startRequestPoller() {
   if (requestPoller) return;
   requestPoller = setInterval(pollRequests, 5000);
+}
+
+function startTrustPoller() {
+  if (trustPoller) return;
+  trustPoller = setInterval(fetchUserInfo, 8000);
+}
+
+function pushBellNotification(kind, title, message, dedupeKey = null) {
+  if (dedupeKey && appNotifications.some(n => n.dedupeKey === dedupeKey)) return;
+  appNotifications.unshift({
+    id: `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    kind,
+    title,
+    message,
+    dedupeKey
+  });
+  if (appNotifications.length > 10) appNotifications = appNotifications.slice(0, 10);
+  renderBellBox();
+}
+
+function dismissBellNotification(id) {
+  appNotifications = appNotifications.filter(n => n.id !== id);
+  renderBellBox();
+}
+
+function renderBellBox() {
+  const box = document.getElementById("bellBox");
+  const dot = document.getElementById("bell-dot");
+  if (!box || !dot) return;
+
+  const hasIncoming = !!incomingRequestData;
+  const hasFeed = appNotifications.length > 0;
+  dot.classList.toggle("hidden", !hasIncoming && !hasFeed);
+
+  const incomingHtml = incomingRequestData ? `
+    <div class="notif-item">
+      <div class="notif-avatar">${(incomingRequestData.username || "?")[0]}</div>
+      <div class="notif-text">
+        <div class="name">${escapeHtml(incomingRequestData.username || "User")}</div>
+        <div class="msg">wants to meet you</div>
+      </div>
+      <div class="notif-actions">
+        <button class="accept-btn" onclick="respondRequest('accept')"><i class="fas fa-check"></i></button>
+        <button class="decline-btn" onclick="respondRequest('decline')"><i class="fas fa-xmark"></i></button>
+      </div>
+    </div>
+  ` : "";
+
+  const feedHtml = appNotifications.map(n => `
+    <div class="notif-item">
+      <div class="notif-avatar">${n.kind === "reach" ? "R" : "i"}</div>
+      <div class="notif-text">
+        <div class="name">${escapeHtml(n.title)}</div>
+        <div class="msg">${escapeHtml(n.message)}</div>
+      </div>
+      <div class="notif-actions">
+        <button class="decline-btn" onclick="dismissBellNotification('${n.id}')"><i class="fas fa-xmark"></i></button>
+      </div>
+    </div>
+  `).join("");
+
+  box.innerHTML = incomingHtml + feedHtml + (!incomingHtml && !feedHtml ? `<div class="muted">No notifications</div>` : "");
 }
 
 // ==========================
@@ -154,6 +239,19 @@ async function fetchUserInfo() {
   if (data.is_matched === 1) enterMatchMode();
 }
 
+async function syncLiveIndicator() {
+  const liveEl = document.getElementById("live-indicator");
+  const fabEl = document.getElementById("main-fab");
+  if (!liveEl) return;
+
+  const res = await fetch("/api/my_live_status");
+  if (!res.ok) return;
+  const data = await res.json().catch(() => ({}));
+  const isLive = !!data.live;
+  liveEl.classList.toggle("hidden", !isLive);
+  if (fabEl) fabEl.classList.toggle("hidden", isLive);
+}
+
 // ==========================
 // MATCH STATUS POLLING
 // ==========================
@@ -163,13 +261,41 @@ function startMatchPoller() {
 }
 
 async function checkMatchStatus() {
-  if (isMatched) return;
-
   const res = await fetch("/api/match_status");
   if (!res.ok) return;
 
   const data = await res.json();
-  if (data.matched) enterMatchMode();
+  if (data.matched) {
+    currentMatchId = data.match_id || null;
+    myReachedInCurrentMatch = !!data.i_reached;
+    otherReachedInCurrentMatch = !!data.other_reached;
+    if (!isMatched) enterMatchMode();
+    refreshMatchUI(data);
+    return;
+  }
+
+  if (isMatched) {
+    isMatched = false;
+    setTimelineState({ matched: true, onWay: true, reached: true, ended: true });
+    const wasCompleted = myReachedInCurrentMatch && otherReachedInCurrentMatch;
+    let endedByOtherNotice = null;
+    if (data.ended_by_other && !wasCompleted) {
+      const endedBy = data.ended_by || "Your match";
+      const reason = data.end_reason || "No reason provided.";
+      endedByOtherNotice = { endedBy, reason };
+    }
+    if (endedByOtherNotice && data.match_id && lastEndReasonNoticeMatchId !== data.match_id) {
+      lastEndReasonNoticeMatchId = data.match_id;
+      pushBellNotification(
+        "end_reason",
+        `${endedByOtherNotice.endedBy} ended the match`,
+        `Reason: ${endedByOtherNotice.reason}`,
+        `end_${data.match_id}`
+      );
+    }
+    const flowType = wasCompleted ? "completed" : (endedByOtherNotice ? "other_ended" : "ended");
+    showFeedbackForLatestTarget(endedByOtherNotice, flowType);
+  }
 }
 
 // ==========================
@@ -208,6 +334,98 @@ async function fetchNearbyUsers() {
   renderNearbyCards();
 }
 
+function formatMeetingDateTime(rawMeetTime) {
+  if (!rawMeetTime) return "Not selected";
+
+  const value = String(rawMeetTime).trim();
+  const [datePart, timePartRaw] = value.split("T");
+
+  if (datePart && timePartRaw) {
+    const dt = new Date(`${datePart}T${timePartRaw}`);
+    if (!Number.isNaN(dt.getTime())) {
+      const dateLabel = dt.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      });
+      const timeLabel = dt.toLocaleTimeString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+      });
+      return `${dateLabel}, ${timeLabel}`;
+    }
+    return `${datePart}, ${timePartRaw.slice(0, 5)}`;
+  }
+
+  if (/^\d{1,2}:\d{2}$/.test(value)) {
+    const [hStr, mStr] = value.split(":");
+    let hour = parseInt(hStr, 10);
+    const minute = parseInt(mStr, 10);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12 || 12;
+    return `${hour}:${String(minute).padStart(2, "0")} ${ampm}`;
+  }
+
+  return value;
+}
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function loadProfileFeedback(userId) {
+  activeFeedbackProfileUserId = userId;
+  const feedbackGroup = document.getElementById("p-feedback-group");
+  const feedbackWrap = document.getElementById("p-feedback-wrap");
+  const feedbackSummary = document.getElementById("p-feedback-summary");
+  const feedbackDropdown = document.getElementById("p-feedback-dropdown");
+  if (!feedbackGroup || !feedbackWrap) return;
+
+  feedbackGroup.classList.remove("hidden");
+  if (feedbackSummary) feedbackSummary.innerText = "Past Feedback";
+  if (feedbackDropdown) feedbackDropdown.open = false;
+  feedbackWrap.innerHTML = `<div class="muted">Loading feedback...</div>`;
+
+  try {
+    const res = await fetch(`/api/user_feedback/${userId}`);
+    const payload = await res.json().catch(() => ({}));
+
+    if (activeFeedbackProfileUserId !== userId) return;
+
+    if (!res.ok) {
+      feedbackWrap.innerHTML = `<div class="muted">Unable to load feedback</div>`;
+      return;
+    }
+
+    const reviews = payload.reviews || [];
+    if (feedbackSummary) feedbackSummary.innerText = `Past Feedback (${reviews.length})`;
+    if (!reviews.length) {
+      feedbackWrap.innerHTML = `<div class="muted">No feedback yet.</div>`;
+      return;
+    }
+
+    feedbackWrap.innerHTML = reviews.map(r => `
+      <div class="profile-feedback-item">
+        <div class="profile-feedback-head">
+          <span><strong>${escapeHtml(r.by)}</strong></span>
+          <span>⭐ ${r.rating}/10</span>
+        </div>
+        ${r.comment ? `<div class="profile-feedback-comment">${escapeHtml(r.comment)}</div>` : ""}
+        <div class="muted">${new Date(r.created_at * 1000).toLocaleString()}</div>
+      </div>
+    `).join("");
+  } catch (_) {
+    if (activeFeedbackProfileUserId !== userId) return;
+    feedbackWrap.innerHTML = `<div class="muted">Unable to load feedback</div>`;
+  }
+}
+
 // ==========================
 // PROFILE
 // ==========================
@@ -216,11 +434,10 @@ function openProfile(user) {
   document.getElementById("p-avatar").innerText = user.username?.[0] || "?";
   document.getElementById("p-username").innerText = user.username;
   document.getElementById("p-score").innerText = user.trust_score ?? "--";
+  const meeting = formatMeetingDateTime(user.meet_time);
   document.getElementById("p-place").innerText = user.place || "—";
   document.getElementById("p-intent").innerText = user.intent || "—";
-  document.getElementById("p-time").innerText = user.meet_time || "Now";
-  const dist = user.distance_km;
-  document.getElementById("p-distance").innerText = dist ? `${dist.toFixed(1)} km away` : "";
+  document.getElementById("p-time").innerText = meeting;
 
   const clueWrap = document.getElementById("p-clue-wrap");
   if (user.clue) {
@@ -238,13 +455,16 @@ function openProfile(user) {
     bioWrap.classList.add("hidden");
   }
 
+  const vibesGroup = document.getElementById("p-vibes-group");
   const vibesWrap = document.getElementById("p-vibes-wrap");
   if (user.vibes && user.vibes.length) {
-    vibesWrap.classList.remove("hidden");
+    vibesGroup.classList.remove("hidden");
     vibesWrap.innerHTML = user.vibes.map(v => `<span class="profile-chip">${v}</span>`).join("");
   } else {
-    vibesWrap.classList.add("hidden");
+    vibesGroup.classList.add("hidden");
   }
+
+  loadProfileFeedback(user.id);
   openSheet("profile-sheet");
 }
 
@@ -296,28 +516,14 @@ async function pollRequests() {
   if (!res.ok) return;
 
   const data = await res.json();
-  if (data.type !== "incoming") return;
-
-  currentRequestId = data.data.id;
-  const bellBox = document.getElementById("bellBox");
-  const dot = document.getElementById("bell-dot");
-  if (dot) dot.classList.remove("hidden");
-  if (bellBox) {
-    bellBox.classList.remove("hidden");
-    bellBox.innerHTML = `
-      <div class="notif-item">
-        <div class="notif-avatar">${data.data.username[0]}</div>
-        <div class="notif-text">
-          <div class="name">${data.data.username}</div>
-          <div class="msg">wants to meet you</div>
-        </div>
-        <div class="notif-actions">
-          <button class="accept-btn" onclick="respondRequest('accept')"><i class="fas fa-check"></i></button>
-          <button class="decline-btn" onclick="respondRequest('decline')"><i class="fas fa-xmark"></i></button>
-        </div>
-      </div>
-    `;
+  if (data.type === "incoming" && data.data) {
+    currentRequestId = data.data.id;
+    incomingRequestData = data.data;
+  } else {
+    currentRequestId = null;
+    incomingRequestData = null;
   }
+  renderBellBox();
 }
 
 // ==========================
@@ -331,7 +537,8 @@ async function respondRequest(action) {
   });
 
   currentRequestId = null;
-  document.getElementById("bell-dot").classList.add("hidden");
+  incomingRequestData = null;
+  renderBellBox();
   document.getElementById("bellBox").classList.add("hidden");
 
   if (action === "accept") enterMatchMode();
@@ -345,7 +552,6 @@ function enterMatchMode() {
 
   isMatched = true;
   clearInterval(requestPoller); requestPoller = null;
-  clearInterval(matchPoller);
 
   // ensure overlays/sheets are closed so clicks aren't blocked
   closeAllSheets();
@@ -359,41 +565,169 @@ function enterMatchMode() {
   nearbyMarkers = [];
 
   showSection("match-view");
+  setTimelineState({ matched: true, onWay: true, reached: false, ended: false });
+  refreshMatchUI({ i_reached: myReachedInCurrentMatch, other_reached: false });
 }
 
 // ==========================
 // END MATCH → FEEDBACK
 // ==========================
-async function endMatch() {
-  const resEnd = await fetch("/api/end_match", { method: "POST" });
+async function endMatch(reason = "") {
+  const resEnd = await fetch("/api/end_match", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason })
+  });
   const endPayload = await resEnd.json().catch(() => ({}));
   if (!resEnd.ok) {
-    alert(endPayload.error || "Unable to end match");
+    if (endPayload.error === "reason_required") alert("Reason is required before ending this match.");
+    else if (endPayload.error === "reason_too_long") alert("Reason must be 50 words or fewer.");
+    else alert(endPayload.error || "Unable to end match");
     return;
   }
 
-  const res = await fetch("/api/feedback_target");
-  const target = await res.json().catch(() => ({}));
-  if (!res.ok || target.error || !target.id) {
-    // No ended match to rate; just reset UI
-    isMatched = false;
-    backToMap();
-    return;
-  }
-
-  feedbackTargetId = target.id;
+  setTimelineState({ matched: true, onWay: true, reached: true, ended: true });
   isMatched = false;
-  showFeedbackUI(target.username);
+  closeEndMatchModal();
+  const flowType = (myReachedInCurrentMatch && otherReachedInCurrentMatch) ? "completed" : "self_ended";
+  showFeedbackForLatestTarget(null, flowType);
+}
+
+function initEndMatchReasonUI() {
+  const chipWrap = document.getElementById("end-reason-chips");
+  const textEl = document.getElementById("end-reason-text");
+  if (!chipWrap || !textEl) return;
+
+  chipWrap.querySelectorAll(".reason-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      chipWrap.querySelectorAll(".reason-chip").forEach(other => other.classList.remove("selected"));
+      chip.classList.add("selected");
+      selectedEndReason = chip.getAttribute("data-reason") || "";
+      textEl.value = selectedEndReason;
+      updateEndReasonCounter();
+      clearEndReasonError();
+    });
+  });
+
+  textEl.addEventListener("input", () => {
+    selectedEndReason = "";
+    chipWrap.querySelectorAll(".reason-chip").forEach(chip => chip.classList.remove("selected"));
+    updateEndReasonCounter();
+    clearEndReasonError();
+  });
+
+  updateEndReasonCounter();
+}
+
+function updateEndReasonCounter() {
+  const textEl = document.getElementById("end-reason-text");
+  const counterEl = document.getElementById("end-reason-counter");
+  if (!textEl || !counterEl) return;
+  const count = countWords(textEl.value);
+  counterEl.innerText = `${count} / 50 words`;
+  counterEl.style.color = count > 50 ? "#ff8080" : "";
+}
+
+function countWords(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
+}
+
+function showEndReasonError(message) {
+  const errorEl = document.getElementById("end-reason-error");
+  if (!errorEl) return;
+  errorEl.innerText = message;
+  errorEl.classList.remove("hidden");
+}
+
+function clearEndReasonError() {
+  const errorEl = document.getElementById("end-reason-error");
+  if (!errorEl) return;
+  errorEl.classList.add("hidden");
+  errorEl.innerText = "";
+}
+
+function openEndMatchModal() {
+  const modal = document.getElementById("end-match-modal");
+  const textEl = document.getElementById("end-reason-text");
+  const chipWrap = document.getElementById("end-reason-chips");
+  if (!modal) return;
+  selectedEndReason = "";
+  if (textEl) textEl.value = "";
+  if (chipWrap) chipWrap.querySelectorAll(".reason-chip").forEach(chip => chip.classList.remove("selected"));
+  clearEndReasonError();
+  updateEndReasonCounter();
+  modal.classList.remove("hidden");
+}
+
+function toggleMatchHelp() {
+  const helpBox = document.getElementById("match-help-box");
+  if (!helpBox) return;
+  helpBox.classList.toggle("hidden");
+}
+
+function closeEndMatchModal() {
+  const modal = document.getElementById("end-match-modal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+}
+
+function handleMatchEndAction() {
+  if (myReachedInCurrentMatch) {
+    endMatch("");
+    return;
+  }
+  openEndMatchModal();
+}
+
+async function confirmEndMatch() {
+  const textEl = document.getElementById("end-reason-text");
+  if (!textEl) return;
+
+  const reason = textEl.value.trim();
+  const words = countWords(reason);
+  if (!myReachedInCurrentMatch && !reason) {
+    showEndReasonError("Reason is required before ending if you have not reached.");
+    return;
+  }
+  if (words > 50) {
+    showEndReasonError("Reason must be 50 words or fewer.");
+    return;
+  }
+
+  await endMatch(reason);
 }
 
 // ==========================
 // FEEDBACK UI
 // ==========================
-function showFeedbackUI(username) {
+function renderFeedbackForm() {
+  const card = document.querySelector("#feedback-view .feedback-card");
+  if (!card) return null;
+
+  card.innerHTML = `
+    <h2>⭐ Rate Your Match ⭐</h2>
+    <p id="feedback-username"></p>
+    <div id="rating-box"></div>
+    <textarea id="feedback-text"
+      placeholder="Write up to 50 words"
+      style="width:90%;max-width:400px;height:80px;"></textarea>
+    <div class="action-row">
+      <button onclick="submitFeedback()" class="primary-btn">Submit</button>
+    </div>
+  `;
+  return card;
+}
+
+function showFeedbackUI(username, endedByOtherNotice = null) {
+  renderFeedbackForm();
   showSection("feedback-view");
+  feedbackRequired = true;
   selectedRating = 0;
   const nameEl = document.getElementById("feedback-username");
   if (nameEl) nameEl.innerText = `@${username}`;
+  renderEndedByOtherNotice(endedByOtherNotice);
 
   const ratingBox = document.getElementById("rating-box");
   if (ratingBox) {
@@ -401,6 +735,154 @@ function showFeedbackUI(username) {
       `<button class="rate-btn" onclick="selectRating(${n}, this)">${n}</button>`
     ).join("");
   }
+}
+
+function renderEndedByOtherNotice(endedByOtherNotice) {
+  const card = document.querySelector("#feedback-view .feedback-card");
+  if (!card) return;
+
+  const existing = card.querySelector(".end-by-other-note");
+  if (existing) existing.remove();
+
+  if (!endedByOtherNotice) return;
+  const endedBy = escapeHtml(endedByOtherNotice.endedBy || "Your match");
+  const reason = escapeHtml(endedByOtherNotice.reason || "No reason shared.");
+
+  const note = document.createElement("div");
+  note.className = "end-by-other-note";
+  note.innerHTML = `<strong>${endedBy} canceled the match.</strong><br>Reason: ${reason}`;
+  const usernameEl = document.getElementById("feedback-username");
+  if (usernameEl) usernameEl.insertAdjacentElement("afterend", note);
+}
+
+function showPostMatchOutcome(flowType, username, endedByOtherNotice = null) {
+  const titleEl = document.getElementById("post-match-title");
+  const subEl = document.getElementById("post-match-subtitle");
+  const badgeEl = document.getElementById("post-match-badge");
+  const reasonEl = document.getElementById("post-match-reason");
+  const ctaEl = document.getElementById("post-match-cta");
+  if (!titleEl || !subEl || !badgeEl || !reasonEl || !ctaEl) {
+    showFeedbackUI(username, endedByOtherNotice);
+    return;
+  }
+
+  reasonEl.classList.add("hidden");
+  reasonEl.innerHTML = "";
+
+  if (flowType === "other_ended") {
+    const endedBy = escapeHtml((endedByOtherNotice && endedByOtherNotice.endedBy) || "Your match");
+    const reason = escapeHtml((endedByOtherNotice && endedByOtherNotice.reason) || "No reason provided.");
+    titleEl.innerText = "Match Canceled";
+    subEl.innerText = `${endedBy} ended this match early.`;
+    badgeEl.innerText = "Before meetup";
+    reasonEl.innerHTML = `<strong>${endedBy} canceled the match.</strong><br>Reason: ${reason}`;
+    reasonEl.classList.remove("hidden");
+    ctaEl.innerText = "Continue to Rating";
+  } else if (flowType === "completed") {
+    titleEl.innerText = "Match Completed";
+    subEl.innerText = "Both of you reached. Nice job closing the meetup properly.";
+    badgeEl.innerText = "After meetup";
+    ctaEl.innerText = "Rate Your Experience";
+  } else if (flowType === "ended") {
+    titleEl.innerText = "Match Ended";
+    subEl.innerText = "This match ended. Share your quick rating to close this session.";
+    badgeEl.innerText = "Session closed";
+    ctaEl.innerText = "Continue to Rating";
+  } else {
+    titleEl.innerText = "Match Ended";
+    subEl.innerText = "You ended this match. Share feedback to close this session.";
+    badgeEl.innerText = "Before meetup";
+    ctaEl.innerText = "Continue to Rating";
+  }
+
+  showSection("post-match-view");
+}
+
+function proceedToFeedback() {
+  if (!pendingFeedbackUsername) {
+    backToMap();
+    return;
+  }
+  showFeedbackUI(pendingFeedbackUsername);
+}
+
+async function showFeedbackForLatestTarget(endedByOtherNotice = null, flowType = "self_ended") {
+  const res = await fetch("/api/feedback_target");
+  const target = await res.json().catch(() => ({}));
+  if (!res.ok || target.error || !target.id) {
+    backToMap();
+    return;
+  }
+  feedbackTargetId = target.id;
+  pendingFeedbackUsername = target.username;
+  showPostMatchOutcome(flowType, target.username, endedByOtherNotice);
+}
+
+function refreshMatchUI(data) {
+  const reachedBtn = document.getElementById("reached-btn");
+  const endBtn = document.getElementById("end-match-btn");
+  const statusEl = document.getElementById("reached-status");
+  if (!reachedBtn || !statusEl || !endBtn) return;
+
+  const iReached = !!data.i_reached;
+  const otherReached = !!data.other_reached;
+  otherReachedInCurrentMatch = otherReached;
+  updateReachedPills(iReached, otherReached);
+
+  reachedBtn.disabled = iReached;
+  reachedBtn.innerText = iReached ? "Reached Confirmed" : "I Reached";
+  endBtn.innerText = iReached ? "End Match" : "Emergency End Match";
+  setTimelineState({
+    matched: true,
+    onWay: true,
+    reached: iReached || otherReached,
+    ended: false
+  });
+
+  if (iReached && otherReached) {
+    statusEl.innerText = "Both sides reached. You can now end the match anytime.";
+    return;
+  }
+  statusEl.innerText = otherReached
+    ? "Your match has reached. Mark yourself reached when you arrive."
+    : "You are matched. Mark reached when you get there.";
+}
+
+function updateReachedPills(iReached, otherReached) {
+  const myPill = document.getElementById("reach-pill-you");
+  const otherPill = document.getElementById("reach-pill-match");
+  if (!myPill || !otherPill) return;
+
+  myPill.innerText = `You: ${iReached ? "Reached" : "On the way"}`;
+  otherPill.innerText = `Match: ${otherReached ? "Reached" : "On the way"}`;
+  myPill.classList.toggle("is-on", !!iReached);
+  otherPill.classList.toggle("is-on", !!otherReached);
+}
+
+async function markReached() {
+  const res = await fetch("/api/mark_reached", { method: "POST" });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    alert(payload.error || "Unable to mark reached");
+    return;
+  }
+  myReachedInCurrentMatch = true;
+  refreshMatchUI({ i_reached: true, other_reached: otherReachedInCurrentMatch });
+}
+
+function setTimelineState({ matched, onWay, reached, ended }) {
+  const steps = [
+    ["tl-matched", matched],
+    ["tl-way", onWay],
+    ["tl-reached", reached],
+    ["tl-ended", ended]
+  ];
+
+  steps.forEach(([id, active]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle("is-active", !!active);
+  });
 }
 
 function selectRating(n, el) {
@@ -456,14 +938,19 @@ function submitFeedback() {
       comment: comment
     })
   })
-  .then(res => res.json())
+  .then(async res => ({ ok: res.ok, data: await res.json().catch(() => ({})) }))
   .then(data => {
-    if (data.status === "submitted") {
+    if (data.ok && data.data.status === "submitted") {
       alert("Feedback submitted");
+      feedbackRequired = false;
       feedbackTargetId = null;
       showFeedbackResult(rating, comment);
     } else {
-      alert("Failed to submit feedback");
+      const err = data.data?.error;
+      if (err === "invalid_rating") alert("Please select a rating between 1 and 10.");
+      else if (err === "missing_data" || err === "invalid_data") alert("Feedback target is missing. Please try again.");
+      else if (err === "unauthorized") alert("Please sign in again.");
+      else alert("Failed to submit feedback. Please try again.");
     }
   })
   .catch(err => {
@@ -473,11 +960,21 @@ function submitFeedback() {
 }
 
 function finishFeedback() {
+  feedbackRequired = false;
   selectedRating = 0;
+  myReachedInCurrentMatch = false;
+  otherReachedInCurrentMatch = false;
+  currentMatchId = null;
+  pendingFeedbackUsername = "";
+  selectedEndReason = "";
+  const reasonText = document.getElementById("end-reason-text");
+  if (reasonText) reasonText.value = "";
+  updateEndReasonCounter();
   startRequestPoller();
   startMatchPoller();
   fetchNearbyUsers();
   fetchUserInfo();
+  syncLiveIndicator();
   showSection("app-shell");
 }
 
@@ -556,15 +1053,22 @@ function goToSettings() {
 
 function toggleBellBox() {
   const box = document.getElementById('bellBox');
-  if (box) box.classList.toggle('hidden');
+  if (!box) return;
+  renderBellBox();
+  box.classList.toggle('hidden');
 }
 
 function backToMap() {
+  if (feedbackRequired || feedbackTargetId) {
+    alert("Rating is mandatory. Submit feedback to continue.");
+    return;
+  }
   showSection("app-shell");
   if (!isMatched) {
     startRequestPoller();
     startMatchPoller();
     fetchNearbyUsers();
+    syncLiveIndicator();
   }
 }
 
@@ -631,6 +1135,8 @@ async function confirmCheckIn() {
   closeAllSheets();
   // Show live indicator
   document.getElementById("live-indicator").classList.remove("hidden");
+  const fabEl = document.getElementById("main-fab");
+  if (fabEl) fabEl.classList.add("hidden");
 }
 
 async function turnOffSpotlight() {
@@ -641,6 +1147,9 @@ async function turnOffSpotlight() {
   }
 
   document.getElementById("live-indicator").classList.add("hidden");
+  const fabEl = document.getElementById("main-fab");
+  if (fabEl) fabEl.classList.remove("hidden");
+  fetchUserInfo();
 }
 
 // ==========================

@@ -10,6 +10,7 @@ spotlight_app/.venv/
 
 # Databases and local state
 *.db
+.env
 
 # OS files
 .DS_Store

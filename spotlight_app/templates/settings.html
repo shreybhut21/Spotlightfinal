@@ -58,13 +58,13 @@
     }
 
     .btn {
-      width: 100%;
       padding: 14px;
       border-radius: 12px;
       border: none;
       cursor: pointer;
       font-weight: 600;
       margin-top: 10px;
+      width: 100%;
     }
 
     .primary {
@@ -81,7 +81,35 @@
     .feedback {
       font-size: 0.9rem;
       color: #aaa;
-      margin-top: 6px;
+      margin-top: 10px;
+      line-height: 1.45;
+    }
+
+    .feedback-empty {
+      border: 1px dashed #3a3a3a;
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      color: #9a9a9a;
+      background: #141414;
+    }
+
+    .feedback-main {
+      font-size: 1rem;
+      color: #f2f2f2;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .actions .btn {
+      margin-top: 0;
     }
   </style>
 </head>
@@ -130,8 +158,10 @@
     <div id="feedbackBox" class="feedback">Loading feedback…</div>
   </div>
 
-  <button class="btn primary" onclick="location.href='/index.html'">Back to Map</button>
-  <button class="btn secondary" onclick="location.href='/logout'">Logout</button>
+  <div class="actions">
+    <button class="btn primary" onclick="location.href='/index.html'">Back to Map</button>
+    <button class="btn secondary" onclick="location.href='/logout'">Logout</button>
+  </div>
 </div>
 
 <script>
@@ -154,10 +184,18 @@
     .then(data => {
       const box = document.getElementById("feedbackBox");
       if (!data.count) {
-        box.innerText = "No feedback yet";
+        box.innerHTML = `
+          <div class="feedback-empty">
+            <div class="feedback-main">No feedback yet</div>
+            <div>Your reviews will appear here after your first meetup.</div>
+          </div>
+        `;
         return;
       }
-      box.innerText = `⭐ ${data.average}/10 from ${data.count} people`;
+      box.innerHTML = `
+        <div class="feedback-main">⭐ ${data.average}/10</div>
+        <div>from ${data.count} ${data.count === 1 ? "person" : "people"}</div>
+      `;
     });
 
   // -------- BIO SAVE --------

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Profile | Spotlight</title>
+  <style>
+    :root {
+      --bg: #060606;
+      --card: rgba(20, 20, 20, 0.92);
+      --border: rgba(255, 255, 255, 0.12);
+      --gold: #d4af37;
+      --muted: #9d9d9d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(circle at top, rgba(212, 175, 55, 0.12), transparent 45%), var(--bg);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.6rem;
+    }
+
+    .subtitle {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .error {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(248, 113, 113, 0.45);
+      background: rgba(220, 38, 38, 0.16);
+      color: #fecaca;
+      font-size: 0.9rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--gold);
+      font-size: 0.76rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: #fff;
+      padding: 11px 12px;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+
+    .vibes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .vibes input { display: none; }
+
+    .chip {
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .vibes input:checked + .chip {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #111;
+      font-weight: 600;
+    }
+
+    .email {
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .btn {
+      width: 100%;
+      border: none;
+      border-radius: 999px;
+      padding: 13px;
+      font-weight: 700;
+      background: var(--gold);
+      color: #111;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <form class="card" method="POST" action="/auth/complete-profile">
+    <h1>Complete Your Profile</h1>
+    <p class="subtitle">Google sign-in worked. Add your details to continue.</p>
+    <p class="email">Signed in as: {{ user.email }}</p>
+
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <div class="grid">
+      <div class="field">
+        <label>Username</label>
+        <input name="username" value="{{ user.username or '' }}" required>
+      </div>
+
+      <div class="field">
+        <label>Gender</label>
+        <select name="gender" required>
+          <option value="" {{ '' == (user.gender or '') and 'selected' or '' }}>Select</option>
+          <option value="Male" {{ (user.gender or '') == 'Male' and 'selected' or '' }}>Male</option>
+          <option value="Female" {{ (user.gender or '') == 'Female' and 'selected' or '' }}>Female</option>
+          <option value="Other" {{ (user.gender or '') == 'Other' and 'selected' or '' }}>Other</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Birth Date</label>
+        <input type="date" name="dob" value="{{ user.dob or '' }}" required>
+      </div>
+
+      <div class="field">
+        <label>Phone</label>
+        <input type="tel" name="phone" value="{{ user.phone or '' }}" pattern="\+?[0-9\-\s]{7,20}" placeholder="+1 555 123 4567" required>
+      </div>
+
+      <div class="field full">
+        <label>Your Vibes</label>
+        <div class="vibes">
+          <input id="v1" type="checkbox" name="vibes" value="Chill" {{ 'Chill' in selected_vibes and 'checked' or '' }}>
+          <label class="chip" for="v1">Chill</label>
+
+          <input id="v2" type="checkbox" name="vibes" value="DeepTalks" {{ 'DeepTalks' in selected_vibes and 'checked' or '' }}>
+          <label class="chip" for="v2">Deep Talks</label>
+
+          <input id="v3" type="checkbox" name="vibes" value="Exploring" {{ 'Exploring' in selected_vibes and 'checked' or '' }}>
+          <label class="chip" for="v3">Exploring</label>
+
+          <input id="v4" type="checkbox" name="vibes" value="Drinks" {{ 'Drinks' in selected_vibes and 'checked' or '' }}>
+          <label class="chip" for="v4">Drinks</label>
+        </div>
+      </div>
+
+      <div class="field full">
+        <label>Bio</label>
+        <textarea name="bio" maxlength="280" placeholder="Tell people a little about you...">{{ user.bio or '' }}</textarea>
+      </div>
+    </div>
+
+    <button class="btn" type="submit">Save and Continue</button>
+  </form>
+</body>
+</html>
