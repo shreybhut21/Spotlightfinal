@@ -15,6 +15,7 @@ let locationReady = false;
 let requestPoller = null;
 let matchPoller = null;
 let trustPoller = null;
+let appNotifPoller = null;
 let isMatched = false;
 // 🔥 view feedback state
 let myFeedbackList = [];
@@ -79,7 +80,9 @@ document.addEventListener("DOMContentLoaded", () => {
   startTrustPoller();
   syncLiveIndicator();
   startRequestPoller();
+  startAppNotificationPoller();
   startMatchPoller();
+  initPushNotifications();
 });
 
 function startRequestPoller() {
@@ -90,6 +93,12 @@ function startRequestPoller() {
 function startTrustPoller() {
   if (trustPoller) return;
   trustPoller = setInterval(fetchUserInfo, 8000);
+}
+
+function startAppNotificationPoller() {
+  if (appNotifPoller) return;
+  pollAppNotifications();
+  appNotifPoller = setInterval(pollAppNotifications, 7000);
 }
 
 function pushBellNotification(kind, title, message, dedupeKey = null) {
@@ -121,7 +130,7 @@ function renderBellBox() {
 
   const incomingHtml = incomingRequestData ? `
     <div class="notif-item">
-      <div class="notif-avatar">${(incomingRequestData.username || "?")[0]}</div>
+      <div class="notif-avatar clickable" title="View profile" onclick="openIncomingRequestProfile()">${(incomingRequestData.username || "?")[0]}</div>
       <div class="notif-text">
         <div class="name">${escapeHtml(incomingRequestData.username || "User")}</div>
         <div class="msg">wants to meet you</div>
@@ -135,7 +144,7 @@ function renderBellBox() {
 
   const feedHtml = appNotifications.map(n => `
     <div class="notif-item">
-      <div class="notif-avatar">${n.kind === "reach" ? "R" : "i"}</div>
+      <div class="notif-avatar">${(n.kind === "reach") ? "R" : ((n.kind === "admin_push" || n.kind === "admin") ? "A" : "i")}</div>
       <div class="notif-text">
         <div class="name">${escapeHtml(n.title)}</div>
         <div class="msg">${escapeHtml(n.message)}</div>
@@ -147,6 +156,30 @@ function renderBellBox() {
   `).join("");
 
   box.innerHTML = incomingHtml + feedHtml + (!incomingHtml && !feedHtml ? `<div class="muted">No notifications</div>` : "");
+}
+
+function openIncomingRequestProfile() {
+  if (!incomingRequestData || !incomingRequestData.sender_id) return;
+  const requestId = incomingRequestData.id
+    ? `?request_id=${encodeURIComponent(incomingRequestData.id)}`
+    : "";
+  window.location.href = `/profile/${incomingRequestData.sender_id}${requestId}`;
+}
+
+async function pollAppNotifications() {
+  const res = await fetch("/api/notifications");
+  if (!res.ok) return;
+
+  const payload = await res.json().catch(() => ({}));
+  const notifications = payload.notifications || [];
+  notifications.forEach(n => {
+    pushBellNotification(
+      n.kind || "admin_push",
+      n.title || "Admin Update",
+      n.message || "",
+      `admin_${n.id}`
+    );
+  });
 }
 
 // ==========================
@@ -1192,4 +1225,58 @@ function haversine(lat1, lon1, lat2, lon2) {
   const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
+}
+
+// ==========================
+// PUSH NOTIFICATIONS
+// ==========================
+async function initPushNotifications() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
+  const isLocalhost =
+    location.hostname === "localhost" ||
+    location.hostname === "127.0.0.1" ||
+    location.hostname === "::1";
+  if (location.protocol !== "https:" && !isLocalhost) return;
+
+  try {
+    const permission = Notification.permission === "default"
+      ? await Notification.requestPermission()
+      : Notification.permission;
+
+    if (permission !== "granted") return;
+
+    const keyRes = await fetch("/api/push/public_key");
+    if (!keyRes.ok) return;
+    const keyPayload = await keyRes.json().catch(() => ({}));
+    const publicKey = keyPayload.public_key;
+    if (!publicKey) return;
+
+    const swReg = await navigator.serviceWorker.register("/sw.js");
+    const existing = await swReg.pushManager.getSubscription();
+
+    let subscription = existing;
+    if (!subscription) {
+      subscription = await swReg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+    }
+
+    await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(subscription.toJSON())
+    });
+  } catch (err) {
+    console.warn("Push setup failed:", err);
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
 }

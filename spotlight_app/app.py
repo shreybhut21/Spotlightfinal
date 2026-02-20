@@ -2,7 +2,8 @@ import time
 import os
 import logging
 import re
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+import json
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 import csv
 import io
@@ -17,8 +18,19 @@ try:
 except ImportError:  # allow running as standalone script
     import db  # type: ignore
 
-# Load environment variables from .env for local development.
-load_dotenv()
+try:
+    from pywebpush import webpush, WebPushException
+except ImportError:
+    webpush = None  # type: ignore
+    WebPushException = Exception  # type: ignore
+
+# Load environment variables from the project-root .env file.
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+ROOT_DOTENV = os.path.join(PROJECT_ROOT, ".env")
+if os.path.exists(ROOT_DOTENV):
+    load_dotenv(ROOT_DOTENV)
+else:
+    load_dotenv()
 
 # ======================================================
 # APP SETUP
@@ -90,6 +102,22 @@ def _is_profile_complete(user) -> bool:
 
 
 REQUEST_PENDING_TTL_SECONDS = 60 * 60  # 1 hour
+MAX_PROFILE_VIBES = 5
+PROFILE_VIBE_OPTIONS = [
+    ("Chill", "Chill"),
+    ("DeepTalks", "Deep Talks"),
+    ("Exploring", "Exploring"),
+    ("Drinks", "Drinks"),
+    ("Coffee", "Coffee"),
+    ("Foodie", "Foodie"),
+    ("Fitness", "Fitness"),
+    ("Movies", "Movies"),
+    ("Music", "Music"),
+    ("Gaming", "Gaming"),
+    ("Books", "Books"),
+    ("Networking", "Networking"),
+]
+PROFILE_VIBE_ALLOWED = {value for value, _ in PROFILE_VIBE_OPTIONS}
 
 
 def _expire_stale_pending_requests(conn) -> None:
@@ -102,6 +130,19 @@ def _expire_stale_pending_requests(conn) -> None:
         (cutoff,),
     )
 
+
+def _push_config():
+    return {
+        "public_key": (os.environ.get("VAPID_PUBLIC_KEY") or "").strip(),
+        "private_key": (os.environ.get("VAPID_PRIVATE_KEY") or "").strip(),
+        "subject": (os.environ.get("VAPID_SUBJECT") or "mailto:admin@example.com").strip(),
+    }
+
+
+def _push_ready() -> bool:
+    cfg = _push_config()
+    return bool(webpush and cfg["public_key"] and cfg["private_key"])
+
 # ======================================================
 # AUTH / PAGES
 # ======================================================
@@ -112,6 +153,11 @@ def home():
 @app.route("/policy")
 def policy():
     return render_template("policy.html")
+
+
+@app.route("/sw.js")
+def service_worker():
+    return send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
 
 @app.route("/auth")
 def auth():
@@ -201,44 +247,73 @@ def complete_profile():
         session.clear()
         return redirect("/auth")
 
+    def render_profile(error=None, selected_vibes=None, form_data=None):
+        selected = selected_vibes if selected_vibes is not None else [v for v in (user["vibe_tags"] or "").split(",") if v]
+        data = form_data or {
+            "username": user["username"] or "",
+            "gender": user["gender"] or "",
+            "dob": user["dob"] or "",
+            "phone": user["phone"] or "",
+            "bio": user["bio"] or "",
+        }
+        return render_template(
+            "complete_profile.html",
+            user=user,
+            selected_vibes=selected,
+            form_data=data,
+            error=error,
+            max_vibes=MAX_PROFILE_VIBES,
+            vibe_options=PROFILE_VIBE_OPTIONS,
+        )
+
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         gender = (request.form.get("gender") or "").strip()
         dob = (request.form.get("dob") or "").strip()
         bio = (request.form.get("bio") or "").strip()
         phone = (request.form.get("phone") or "").strip()
-        vibes = request.form.getlist("vibes")
+        vibes = [v for v in request.form.getlist("vibes") if v in PROFILE_VIBE_ALLOWED]
+        vibes = list(dict.fromkeys(vibes))
         vibe_tags = ",".join(vibes)
+        form_data = {
+            "username": username,
+            "gender": gender,
+            "dob": dob,
+            "phone": phone,
+            "bio": bio,
+        }
 
         if not username:
-            return render_template("complete_profile.html", user=user, selected_vibes=vibes, error="Username is required.")
+            return render_profile("Username is required.", selected_vibes=vibes, form_data=form_data)
         if not gender:
-            return render_template("complete_profile.html", user=user, selected_vibes=vibes, error="Gender is required.")
+            return render_profile("Gender is required.", selected_vibes=vibes, form_data=form_data)
         if not dob:
-            return render_template("complete_profile.html", user=user, selected_vibes=vibes, error="Birth date is required.")
+            return render_profile("Birth date is required.", selected_vibes=vibes, form_data=form_data)
         if not re.match(r"^\+?[0-9\-\s]{7,20}$", phone):
-            return render_template("complete_profile.html", user=user, selected_vibes=vibes, error="Enter a valid phone number.")
+            return render_profile("Enter a valid phone number.", selected_vibes=vibes, form_data=form_data)
         if len(bio) > 280:
-            return render_template("complete_profile.html", user=user, selected_vibes=vibes, error="Bio must be 280 characters or less.")
+            return render_profile("Bio must be 280 characters or less.", selected_vibes=vibes, form_data=form_data)
+        if len(vibes) > MAX_PROFILE_VIBES:
+            return render_profile(f"Choose up to {MAX_PROFILE_VIBES} vibes.", selected_vibes=vibes, form_data=form_data)
         if not vibe_tags:
-            return render_template("complete_profile.html", user=user, selected_vibes=vibes, error="Select at least one vibe.")
+            return render_profile("Select at least one vibe.", selected_vibes=vibes, form_data=form_data)
 
         try:
             y, m, d = map(int, dob.split("-"))
             today = date.today()
             age = today.year - y - ((today.month, today.day) < (m, d))
         except Exception:
-            return render_template("complete_profile.html", user=user, selected_vibes=vibes, error="Enter a valid birth date.")
+            return render_profile("Enter a valid birth date.", selected_vibes=vibes, form_data=form_data)
 
         if age < 18:
-            return render_template("complete_profile.html", user=user, selected_vibes=vibes, error="You must be 18+ to join Spotlight.")
+            return render_profile("You must be 18+ to join Spotlight.", selected_vibes=vibes, form_data=form_data)
 
         exists = conn.execute(
             "SELECT id FROM users WHERE username=? AND id<>?",
             (username, user["id"]),
         ).fetchone()
         if exists:
-            return render_template("complete_profile.html", user=user, selected_vibes=vibes, error="Username already exists.")
+            return render_profile("Username already exists.", selected_vibes=vibes, form_data=form_data)
 
         conn.execute(
             """
@@ -252,8 +327,24 @@ def complete_profile():
         session.pop("needs_profile_completion", None)
         return redirect(url_for("index_html"))
 
-    selected_vibes = [v for v in (user["vibe_tags"] or "").split(",") if v]
-    return render_template("complete_profile.html", user=user, selected_vibes=selected_vibes)
+    return render_profile()
+
+
+@app.route("/api/username_available")
+def username_available():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    username = (request.args.get("username") or "").strip()
+    if not username:
+        return jsonify({"available": False, "reason": "missing_username"}), 400
+
+    conn = db.get_db_connection()
+    exists = conn.execute(
+        "SELECT id FROM users WHERE username=? AND id<>?",
+        (username, session["user_id"]),
+    ).fetchone()
+    return jsonify({"available": not bool(exists)})
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -377,15 +468,69 @@ def settings():
         today = date.today()
         age = today.year - y - ((today.month, today.day) < (m, d))
 
-    vibes = []
-    if user["vibe_tags"]:
-        vibes = user["vibe_tags"].split(",")
+    vibes = [v for v in (user["vibe_tags"] or "").split(",") if v]
 
     return render_template(
         "settings.html",
         user=user,
         age=age,
-        vibes=vibes
+        vibes=vibes,
+        max_vibes=MAX_PROFILE_VIBES,
+        vibe_options=PROFILE_VIBE_OPTIONS,
+    )
+
+
+@app.route("/profile/<int:user_id>")
+def public_profile(user_id):
+    if "user_id" not in session:
+        return redirect("/auth")
+
+    conn = db.get_db_connection()
+    user = conn.execute(
+        """
+        SELECT id, username, gender, dob, phone, bio, vibe_tags, trust_score
+        FROM users
+        WHERE id=?
+        """,
+        (user_id,),
+    ).fetchone()
+
+    if not user:
+        return redirect("/index.html")
+
+    incoming_request_id = None
+    request_id = request.args.get("request_id", type=int)
+    if request_id:
+        req = conn.execute(
+            """
+            SELECT id
+            FROM requests
+            WHERE id=?
+              AND sender_id=?
+              AND receiver_id=?
+              AND status='pending'
+            """,
+            (request_id, user_id, session["user_id"]),
+        ).fetchone()
+        if req:
+            incoming_request_id = req["id"]
+
+    age = None
+    if user["dob"]:
+        try:
+            y, m, d = map(int, user["dob"].split("-"))
+            today = date.today()
+            age = today.year - y - ((today.month, today.day) < (m, d))
+        except Exception:
+            age = None
+
+    vibes = [v for v in (user["vibe_tags"] or "").split(",") if v]
+    return render_template(
+        "public_profile.html",
+        user=user,
+        age=age,
+        vibes=vibes,
+        incoming_request_id=incoming_request_id,
     )
 
 
@@ -428,6 +573,9 @@ def admin():
     avg_trust = conn.execute(
         "SELECT AVG(trust_score) AS a FROM users"
     ).fetchone()["a"]
+    push_subscribers = conn.execute(
+        "SELECT COUNT(DISTINCT user_id) AS c FROM push_subscriptions"
+    ).fetchone()["c"]
 
     users = conn.execute(
         "SELECT id, username, trust_score, is_active, created_at FROM users ORDER BY id ASC"
@@ -441,8 +589,10 @@ def admin():
             "active_matches": active_matches,
             "total_reviews": total_reviews,
             "avg_trust": round(avg_trust, 1) if avg_trust is not None else None,
+            "push_subscribers": push_subscribers,
         },
-        users=users
+        users=users,
+        push_ready=_push_ready(),
     )
 
 
@@ -573,10 +723,243 @@ def admin_delete_user():
     conn.execute("DELETE FROM requests WHERE sender_id=? OR receiver_id=?", (target_id, target_id))
     conn.execute("DELETE FROM matches WHERE user1_id=? OR user2_id=?", (target_id, target_id))
     conn.execute("DELETE FROM reviews WHERE reviewer_id=? OR reviewed_id=?", (target_id, target_id))
+    conn.execute("DELETE FROM push_subscriptions WHERE user_id=?", (target_id,))
     conn.execute("DELETE FROM users WHERE id=?", (target_id,))
     conn.commit()
 
     return jsonify({"status": "deleted"})
+
+
+@app.route("/api/push/public_key")
+def push_public_key():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    cfg = _push_config()
+    if not cfg["public_key"]:
+        return jsonify({"error": "push_not_configured"}), 503
+
+    return jsonify({"public_key": cfg["public_key"]})
+
+
+@app.route("/api/push/subscribe", methods=["POST"])
+def push_subscribe():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    payload = request.json or {}
+    endpoint = (payload.get("endpoint") or "").strip()
+    keys = payload.get("keys") or {}
+    p256dh = (keys.get("p256dh") or "").strip()
+    auth = (keys.get("auth") or "").strip()
+
+    if not endpoint or not p256dh or not auth:
+        return jsonify({"error": "invalid_subscription"}), 400
+
+    ua = (request.headers.get("User-Agent") or "")[:255]
+    now = time.time()
+    conn = db.get_db_connection()
+    conn.execute(
+        """
+        INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(endpoint) DO UPDATE SET
+            user_id=excluded.user_id,
+            p256dh=excluded.p256dh,
+            auth=excluded.auth,
+            user_agent=excluded.user_agent,
+            updated_at=excluded.updated_at
+        """,
+        (session["user_id"], endpoint, p256dh, auth, ua, now, now),
+    )
+    conn.commit()
+    return jsonify({"status": "saved"})
+
+
+@app.route("/api/push/unsubscribe", methods=["POST"])
+def push_unsubscribe():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    payload = request.json or {}
+    endpoint = (payload.get("endpoint") or "").strip()
+    if not endpoint:
+        return jsonify({"error": "invalid_subscription"}), 400
+
+    conn = db.get_db_connection()
+    conn.execute(
+        "DELETE FROM push_subscriptions WHERE user_id=? AND endpoint=?",
+        (session["user_id"], endpoint),
+    )
+    conn.commit()
+    return jsonify({"status": "removed"})
+
+
+@app.route("/admin/push/send", methods=["POST"])
+def admin_push_send():
+    if not session.get("is_admin"):
+        return jsonify({"error": "unauthorized"}), 401
+    if not _push_ready():
+        return jsonify({"error": "push_not_configured"}), 503
+
+    payload = request.json or {}
+    title = (payload.get("title") or "").strip()
+    message = (payload.get("message") or "").strip()
+    target_type = (payload.get("target_type") or "all").strip()
+
+    if not title or not message:
+        return jsonify({"error": "title_and_message_required"}), 400
+    if len(title) > 80 or len(message) > 240:
+        return jsonify({"error": "content_too_long"}), 400
+
+    conn = db.get_db_connection()
+    target_user_ids = []
+    if target_type == "single":
+        try:
+            target_user_id = int(payload.get("target_user_id"))
+        except (TypeError, ValueError):
+            return jsonify({"error": "invalid_target_user"}), 400
+        target_row = conn.execute(
+            "SELECT id FROM users WHERE id=? AND is_active=1",
+            (target_user_id,),
+        ).fetchone()
+        if target_row:
+            target_user_ids = [target_row["id"]]
+    elif target_type != "all":
+        return jsonify({"error": "invalid_target_type"}), 400
+    else:
+        target_user_ids = [
+            r["id"]
+            for r in conn.execute("SELECT id FROM users WHERE is_active=1").fetchall()
+        ]
+
+    if not target_user_ids:
+        return jsonify(
+            {
+                "status": "sent",
+                "targeted_users": 0,
+                "targeted_subscriptions": 0,
+                "targeted": 0,
+                "sent_count": 0,
+                "failed_count": 0,
+                "removed_subscriptions": 0,
+            }
+        )
+
+    placeholders = ",".join(["?"] * len(target_user_ids))
+    rows = conn.execute(
+        f"""
+        SELECT id, endpoint, p256dh, auth, user_id
+        FROM push_subscriptions
+        WHERE user_id IN ({placeholders})
+        """,
+        tuple(target_user_ids),
+    ).fetchall()
+
+    now = time.time()
+    conn.executemany(
+        """
+        INSERT INTO app_notifications (user_id, title, message, kind, created_at, seen_at)
+        VALUES (?, ?, ?, 'admin_push', ?, NULL)
+        """,
+        [(uid, title, message, now) for uid in target_user_ids],
+    )
+
+    cfg = _push_config()
+    vapid_claims = {"sub": cfg["subject"]}
+    push_payload = json.dumps(
+        {"title": title, "message": message, "kind": "admin_push", "sent_at": int(now)}
+    )
+
+    sent = 0
+    failed = 0
+    removed = 0
+
+    for row in rows:
+        subscription = {
+            "endpoint": row["endpoint"],
+            "keys": {"p256dh": row["p256dh"], "auth": row["auth"]},
+        }
+
+        try:
+            webpush(  # type: ignore[misc]
+                subscription_info=subscription,
+                data=push_payload,
+                vapid_private_key=cfg["private_key"],
+                vapid_claims=vapid_claims,
+            )
+            sent += 1
+            conn.execute(
+                "UPDATE push_subscriptions SET last_sent_at=?, updated_at=? WHERE id=?",
+                (time.time(), time.time(), row["id"]),
+            )
+        except WebPushException as exc:  # type: ignore[misc]
+            failed += 1
+            response = getattr(exc, "response", None)
+            status_code = getattr(response, "status_code", None)
+            # Subscription is expired or invalid; prune it.
+            if status_code in (404, 410):
+                conn.execute("DELETE FROM push_subscriptions WHERE id=?", (row["id"],))
+                removed += 1
+        except Exception:
+            failed += 1
+
+    conn.commit()
+
+    return jsonify(
+        {
+            "status": "sent",
+            "targeted_users": len(target_user_ids),
+            "targeted_subscriptions": len(rows),
+            "targeted": len(rows),
+            "sent_count": sent,
+            "failed_count": failed,
+            "removed_subscriptions": removed,
+        }
+    )
+
+
+@app.route("/api/notifications")
+def api_notifications():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    uid = session["user_id"]
+    conn = db.get_db_connection()
+    rows = conn.execute(
+        """
+        SELECT id, title, message, kind, created_at
+        FROM app_notifications
+        WHERE user_id=? AND seen_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT 25
+        """,
+        (uid,),
+    ).fetchall()
+
+    if rows:
+        ids = [r["id"] for r in rows]
+        placeholders = ",".join(["?"] * len(ids))
+        conn.execute(
+            f"UPDATE app_notifications SET seen_at=? WHERE id IN ({placeholders})",
+            (time.time(), *ids),
+        )
+        conn.commit()
+
+    return jsonify(
+        {
+            "notifications": [
+                {
+                    "id": r["id"],
+                    "title": r["title"],
+                    "message": r["message"],
+                    "kind": r["kind"] or "admin_push",
+                    "created_at": r["created_at"],
+                }
+                for r in rows
+            ]
+        }
+    )
 
 
 # ======================================================
@@ -735,24 +1118,49 @@ def check_requests():
     conn = db.get_db_connection()
     _expire_stale_pending_requests(conn)
     conn.commit()
+    now = time.time()
 
     req = conn.execute(
         """
-        SELECT r.id, u.username
+        SELECT
+            r.id,
+            r.sender_id,
+            u.username,
+            u.trust_score,
+            u.bio,
+            u.vibe_tags,
+            s.place,
+            s.intent,
+            s.meet_time,
+            s.clue
         FROM requests r
         JOIN users u ON u.id = r.sender_id
+        LEFT JOIN spotlights s
+          ON s.user_id = r.sender_id
+         AND s.expiry > ?
         WHERE r.receiver_id = ?
           AND r.status = 'pending'
         ORDER BY r.created_at DESC
         LIMIT 1
         """,
-        (uid,)
+        (now, uid)
     ).fetchone()
 
     if req:
         return jsonify({
             "type": "incoming",
-            "data": {"id": req["id"], "username": req["username"]}
+            "data": {
+                "id": req["id"],
+                "sender_id": req["sender_id"],
+                "username": req["username"],
+                "trust_score": req["trust_score"],
+                "bio": req["bio"],
+                "vibe_tags": req["vibe_tags"],
+                "place": req["place"],
+                "intent": req["intent"],
+                "meet_time": req["meet_time"],
+                "clue": req["clue"],
+            }
         })
 
     return jsonify({"type": "none"})
@@ -1177,37 +1585,88 @@ def my_feedback():
 
     uid = session["user_id"]
     conn = db.get_db_connection()
+    page = request.args.get("page", type=int)
+    per_page = request.args.get("per_page", type=int)
+    use_pagination = page is not None or per_page is not None
 
-    rows = conn.execute("""
-        SELECT r.rating, r.comment, r.created_at, u.username
-        FROM reviews r 
-        JOIN users u ON u.id = r.reviewer_id
-        WHERE r.reviewed_id=?
-        ORDER BY r.created_at DESC
-    """, (uid,)).fetchall()
+    if use_pagination:
+        page = max(1, page or 1)
+        per_page = max(1, min(20, per_page or 5))
 
-    if not rows:
-        return jsonify({
-            "average": None,
-            "count": 0,
-            "reviews": []
-        })
+    aggregate = conn.execute(
+        """
+        SELECT COUNT(*) AS c, AVG(rating) AS avg_rating
+        FROM reviews
+        WHERE reviewed_id=?
+        """,
+        (uid,),
+    ).fetchone()
 
-    avg = round(sum(r["rating"] for r in rows) / len(rows), 1)
+    total_count = int((aggregate["c"] or 0) if aggregate else 0)
+    avg_rating = aggregate["avg_rating"] if aggregate else None
 
-    return jsonify({
-        "average": avg,
-        "count": len(rows),
+    if total_count == 0:
+        payload = {"average": None, "count": 0, "reviews": []}
+        if use_pagination:
+            payload.update({
+                "page": page,
+                "per_page": per_page,
+                "total_pages": 0,
+                "has_prev": False,
+                "has_next": False,
+            })
+        return jsonify(payload)
+
+    if use_pagination:
+        offset = (page - 1) * per_page
+        rows = conn.execute(
+            """
+            SELECT r.rating, r.comment, r.created_at, u.username
+            FROM reviews r
+            JOIN users u ON u.id = r.reviewer_id
+            WHERE r.reviewed_id=?
+            ORDER BY r.created_at DESC
+            LIMIT ? OFFSET ?
+            """,
+            (uid, per_page, offset),
+        ).fetchall()
+        total_pages = (total_count + per_page - 1) // per_page
+    else:
+        rows = conn.execute(
+            """
+            SELECT r.rating, r.comment, r.created_at, u.username
+            FROM reviews r
+            JOIN users u ON u.id = r.reviewer_id
+            WHERE r.reviewed_id=?
+            ORDER BY r.created_at DESC
+            """,
+            (uid,),
+        ).fetchall()
+
+    payload = {
+        "average": round(avg_rating, 1) if avg_rating is not None else None,
+        "count": total_count,
         "reviews": [
             {
                 "rating": r["rating"],
                 "comment": r["comment"],
                 "by": r["username"],
-                "created_at": r["created_at"]
+                "created_at": r["created_at"],
             }
             for r in rows
-        ]
-    })
+        ],
+    }
+
+    if use_pagination:
+        payload.update({
+            "page": page,
+            "per_page": per_page,
+            "total_pages": total_pages,
+            "has_prev": page > 1,
+            "has_next": page < total_pages,
+        })
+
+    return jsonify(payload)
 
 
 @app.route("/api/user_feedback/<int:user_id>")
@@ -1356,6 +1815,42 @@ def nearby():
         })
 
     return jsonify(result)
+
+
+# ======================================================
+# API – UPDATE PROFILE FIELDS
+# ======================================================
+@app.route("/api/update_profile", methods=["POST"])
+def update_profile():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.json or {}
+    raw_vibes = data.get("vibes") or []
+    if not isinstance(raw_vibes, list):
+        return jsonify({"error": "invalid_vibes"}), 400
+
+    vibes = [str(v).strip() for v in raw_vibes]
+    vibes = [v for v in vibes if v in PROFILE_VIBE_ALLOWED]
+    vibes = list(dict.fromkeys(vibes))
+
+    if not vibes:
+        return jsonify({"error": "vibes_required"}), 400
+    if len(vibes) > MAX_PROFILE_VIBES:
+        return jsonify({"error": "too_many_vibes", "max_vibes": MAX_PROFILE_VIBES}), 400
+
+    vibe_tags = ",".join(vibes)
+    conn = db.get_db_connection()
+    conn.execute(
+        "UPDATE users SET vibe_tags=? WHERE id=?",
+        (vibe_tags, session["user_id"]),
+    )
+    conn.commit()
+
+    return jsonify({
+        "status": "saved",
+        "vibes": vibes,
+    })
 
 
 # ======================================================

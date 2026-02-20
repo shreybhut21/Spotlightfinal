@@ -14,387 +14,580 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
 <style>
-:root{
-  --gold:#d4af37;
-  --gold-glow:rgba(212,175,55,.35);
-  --bg:#050505;
-  --glass:rgba(18,18,18,.78);
-  --border:rgba(255,255,255,.12);
-  --muted:#a0a0a0;
+:root {
+  --gold: #d4af37;
+  --gold-glow: rgba(212, 175, 55, 0.35);
+  --bg: #050505;
+  --glass: rgba(18, 18, 18, 0.8);
+  --border: rgba(255, 255, 255, 0.12);
+  --muted: #a0a0a0;
+  --danger: #fca5a5;
 }
 
-*{box-sizing:border-box}
-
-html,body{
-  margin:0;
-  width:100%;
-  height:100%;
+* {
+  box-sizing: border-box;
 }
 
-body{
-  background:var(--bg);
-  color:#fff;
-  font-family:'Outfit',sans-serif;
-  overflow-y:auto; /* allow natural flow; no card clipping */
+html, body {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
 }
 
-/* ===== BACKGROUND ===== */
-.bg{
-  position:fixed;
-  inset:0;
+body {
+  background: var(--bg);
+  color: #fff;
+  font-family: "Outfit", sans-serif;
+  overflow-y: auto;
+}
+
+.bg {
+  position: fixed;
+  inset: 0;
   background-image:
-    linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
-  background-size:40px 40px;
-  z-index:-3;
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  z-index: -3;
 }
 
-.glow{
-  position:fixed;
-  top:-35%;
-  left:50%;
-  transform:translateX(-50%);
-  width:650px;
-  height:650px;
-  background:radial-gradient(circle,var(--gold-glow),transparent 65%);
-  filter:blur(130px);
-  z-index:-2;
+.glow {
+  position: fixed;
+  top: -35%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 650px;
+  height: 650px;
+  background: radial-gradient(circle, var(--gold-glow), transparent 65%);
+  filter: blur(130px);
+  z-index: -2;
 }
 
-/* ===== HERO ===== */
-.hero{
-  position:absolute;
-  top:7%;
-  width:100%;
-  text-align:center;
-  z-index:1;
-  pointer-events:none;
+.hero {
+  padding-top: 38px;
+  text-align: center;
 }
 
-.hero h1{
-  font-family:'Playfair Display',serif;
-  font-size:2.7rem;
-  margin:0;
+.hero h1 {
+  margin: 0;
+  font-family: "Playfair Display", serif;
+  font-size: clamp(2rem, 6vw, 2.7rem);
 }
 
-.hero p{
-  margin-top:8px;
-  color:var(--muted);
-  font-size:.95rem;
+.hero p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
-/* ===== CENTER ===== */
-.wrap{
-  min-height:100vh;
-  display:flex;
-  align-items:flex-start;
-  justify-content:center;
-  padding:48px 16px 32px;
-  perspective:1200px;
-  position:relative;
-  z-index:3;
+.wrap {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  justify-content: center;
+  padding: 28px 16px 40px;
 }
 
-/* ===== FLIP ===== */
-.flip{
-  width:100%;
-  max-width:440px;
-  height:820px; /* register view */
-  position:relative;
-  transform-style:preserve-3d;
-  transition:transform .85s cubic-bezier(.2,.8,.2,1);
-  transition-property: transform, height;
+.auth-shell {
+  width: 100%;
+  max-width: 460px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 26px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.75);
 }
 
-.flip:not(.flipped){
-  height:640px; /* compact login height */
+.tab-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 5px;
 }
 
-.flip.flipped{transform:rotateY(-180deg)}
-
-/* ===== CARD ===== */
-.card{
-  position:absolute;
-  inset:0;
-  background:var(--glass);
-  border:1px solid var(--border);
-  border-radius:28px;
-  padding:38px;
-  backdrop-filter:blur(22px);
-  box-shadow:0 30px 60px rgba(0,0,0,.75);
-  backface-visibility:hidden;
-  display:flex;
-  flex-direction:column;
+.tab-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 12px;
+  background: transparent;
+  color: #c9c9c9;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.card-content{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  justify-content:center;
+.tab-btn.active {
+  background: var(--gold);
+  color: #111;
+  box-shadow: 0 0 16px var(--gold-glow);
 }
 
-.backside{transform:rotateY(180deg)}
-
-/* ===== SHAKE ===== */
-.card.shake{animation:shake .45s}
-@keyframes shake{
-  0%,100%{transform:translateX(0)}
-  25%{transform:translateX(-6px)}
-  50%{transform:translateX(6px)}
-  75%{transform:translateX(-4px)}
+.panel[hidden] {
+  display: none !important;
 }
 
-/* ===== TYPO ===== */
-h2{
-  margin:0;
-  font-family:'Playfair Display',serif;
-  font-size:2.2rem;
-  text-align:center;
+h2 {
+  margin: 0;
+  text-align: center;
+  font-family: "Playfair Display", serif;
+  font-size: 2rem;
 }
 
-.subtitle{
-  text-align:center;
-  color:var(--muted);
-  margin:10px 0 24px;
-  font-size:.9rem;
+.subtitle {
+  text-align: center;
+  color: var(--muted);
+  margin: 8px 0 18px;
+  font-size: 0.9rem;
 }
 
-/* ===== INPUTS ===== */
-.group{margin-bottom:14px}
-
-label{
-  font-size:.72rem;
-  text-transform:uppercase;
-  color:var(--gold);
-  font-weight:600;
-  margin-bottom:6px;
-  display:block;
+.oauth {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
-input,select{
-  width:100%;
-  padding:13px 15px;
-  border-radius:14px;
-  background:rgba(255,255,255,.05);
-  border:1px solid var(--border);
-  color:#fff;
-  font-size:.9rem;
+.oauth-btn {
+  padding: 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.84rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: 0.25s;
 }
 
-textarea{
-  width:100%;
-  padding:13px 15px;
-  border-radius:14px;
-  background:rgba(255,255,255,.05);
-  border:1px solid var(--border);
-  color:#fff;
-  font-size:.9rem;
-  min-height:110px;
-  resize:vertical;
+.oauth-btn:hover {
+  border-color: var(--gold);
+  box-shadow: 0 0 10px var(--gold-glow);
 }
 
-input:focus,select:focus,textarea:focus{
-  outline:none;
-  border-color:var(--gold);
-  box-shadow:0 0 0 2px rgba(212,175,55,.15);
+.group {
+  margin-bottom: 12px;
 }
 
-.row{display:flex;gap:12px}
-
-/* ===== VIBES (FIXED) ===== */
-.vibes{display:flex;flex-wrap:wrap;gap:8px}
-.vibes input{display:none}
-
-.vibe{
-  border:1px solid var(--border);
-  padding:7px 14px;
-  border-radius:999px;
-  font-size:.82rem;
-  color:var(--muted);
-  cursor:pointer;
-  transition:.25s;
+label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: block;
 }
 
-.vibe:hover{
-  transform:translateY(-2px);
-  box-shadow:0 0 10px var(--gold-glow);
+.input-wrap {
+  position: relative;
 }
 
-.vibes input:checked + .vibe{
-  background:var(--gold);
-  color:#000;
-  border-color:var(--gold);
-  font-weight:600;
+input {
+  width: 100%;
+  padding: 13px 15px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: #fff;
+  font-size: 0.92rem;
 }
 
-/* ===== BUTTON ===== */
-.btn{
-  width:100%;
-  padding:15px;
-  border-radius:999px;
-  background:var(--gold);
-  border:none;
-  font-weight:700;
-  cursor:pointer;
-  transition:.25s;
-  margin-top:10px;
+.input-wrap input {
+  padding-right: 44px;
 }
 
-.btn:hover{
-  transform:translateY(-2px);
-  box-shadow:0 0 20px var(--gold-glow);
+input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.15);
 }
 
-/* ===== OAUTH ===== */
-.oauth{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:10px;
-  margin-bottom:16px;
+.toggle-pass-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: #b5b5b5;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
-.oauth-btn{
-  padding:11px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  background:#000;
-  color:#fff;
-  text-decoration:none;
-  font-size:.83rem;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  cursor:pointer;
-  transition:.25s;
+.toggle-pass-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.oauth-btn:hover{
-  border-color:var(--gold);
-  box-shadow:0 0 10px var(--gold-glow);
+.field-error {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--danger);
 }
 
-/* ===== TOGGLE ===== */
-.toggle{
-  text-align:center;
-  margin-top:18px;
-  font-size:.88rem;
-  color:var(--muted);
-}
-
-.toggle span{
-  color:#fff;
-  font-weight:600;
-  cursor:pointer;
-}
-
-.toggle span:hover{color:var(--gold)}
-
-.error-box{
+.error-box {
   background: rgba(220, 38, 38, 0.14);
   border: 1px solid rgba(248, 113, 113, 0.4);
   color: #fecaca;
   padding: 10px 12px;
   border-radius: 12px;
-  font-size: 13px;
+  font-size: 0.82rem;
   margin-bottom: 12px;
+}
+
+.helper {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.consent {
+  margin-top: 8px;
+  margin-bottom: 2px;
+}
+
+.consent label {
+  text-transform: none;
+  color: #d6d6d6;
+  font-size: 0.84rem;
+  letter-spacing: 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.consent input {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: var(--gold);
+}
+
+.consent a {
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.consent a:hover {
+  text-decoration: underline;
+}
+
+.btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 999px;
+  background: var(--gold);
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.25s;
+  margin-top: 10px;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px var(--gold-glow);
+}
+
+.toggle {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.toggle span {
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toggle span:hover {
+  color: var(--gold);
+}
+
+.hidden {
+  display: none !important;
 }
 </style>
 </head>
 
 <body>
+{% set err = (error or '')|lower %}
+{% set login_err_username = (error and not show_signup and 'username' in err) %}
+{% set login_err_password = (error and not show_signup and 'password' in err and 'username' not in err) %}
+{% set login_err_generic = (error and not show_signup and not login_err_username and not login_err_password) %}
+{% set signup_err_username = (error and show_signup and 'username' in err) %}
+{% set signup_err_email = (error and show_signup and 'email' in err) %}
+{% set signup_err_phone = (error and show_signup and 'phone' in err) %}
+{% set signup_err_password = (error and show_signup and 'password' in err) %}
+{% set signup_err_generic = (error and show_signup and not signup_err_username and not signup_err_email and not signup_err_phone and not signup_err_password) %}
+
 <div class="bg"></div>
 <div class="glow"></div>
 
-<!-- HERO -->
 <div class="hero">
   <h1>Join the Map</h1>
   <p>Meet with intent, not swipes.</p>
 </div>
 
 <div class="wrap">
-<div class="flip {{ 'flipped' if show_signup else '' }}" id="flip">
-
-<!-- LOGIN -->
-<div class="card">
-  <div class="card-content">
-    <h2>Spotlight</h2>
-    <p class="subtitle">See who’s nearby right now</p>
-    {% if error and not show_signup %}
-    <div class="error-box">{{ error }}</div>
-    {% endif %}
-
-    <div class="oauth">
-      <a class="oauth-btn" href="/auth/google"><i class="fab fa-google"></i> Google</a>
+  <div class="auth-shell">
+    <div class="tab-row" role="tablist" aria-label="Authentication">
+      <button type="button" class="tab-btn" id="tab-login" role="tab" aria-controls="panel-login" aria-selected="false">
+        Log in
+      </button>
+      <button type="button" class="tab-btn" id="tab-signup" role="tab" aria-controls="panel-signup" aria-selected="false">
+        Sign up
+      </button>
     </div>
 
-    <form action="/login" method="POST">
-      <div class="group">
-        <label>Username</label>
-        <input name="username" required>
-      </div>
-      <div class="group">
-        <label>Password</label>
-        <input type="password" name="password" required>
-      </div>
-      <button class="btn">Enter the Map</button>
-    </form>
+    <section id="panel-login" class="panel" role="tabpanel" aria-labelledby="tab-login">
+      <h2>Spotlight</h2>
+      <p class="subtitle">See who is nearby right now</p>
 
-    <div class="toggle">New here? <span onclick="flip()">Create account</span></div>
+      {% if login_err_generic %}
+      <div class="error-box">{{ error }}</div>
+      {% endif %}
+
+      <div class="oauth">
+        <a class="oauth-btn" href="/auth/google"><i class="fab fa-google"></i> Continue with Google</a>
+      </div>
+
+      <form id="login-form" action="/login" method="POST" novalidate>
+        <div class="group">
+          <label for="login-username">Username</label>
+          <input id="login-username" name="username" autocomplete="username" value="{{ request.form.get('username', '') }}" required>
+          {% if login_err_username %}
+          <div class="field-error">{{ error }}</div>
+          {% endif %}
+          <div class="field-error hidden" id="login-username-error"></div>
+        </div>
+
+        <div class="group">
+          <label for="login-password">Password</label>
+          <div class="input-wrap">
+            <input id="login-password" type="password" name="password" autocomplete="current-password" required>
+            <button type="button" class="toggle-pass-btn" data-toggle-target="login-password" aria-label="Show password">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+          {% if login_err_password %}
+          <div class="field-error">{{ error }}</div>
+          {% endif %}
+          <div class="field-error hidden" id="login-password-error"></div>
+        </div>
+
+        <button class="btn" type="submit">Enter the Map</button>
+      </form>
+
+      <div class="toggle">New here? <span data-open-tab="signup">Create account</span></div>
+    </section>
+
+    <section id="panel-signup" class="panel" role="tabpanel" aria-labelledby="tab-signup" hidden>
+      <h2>Create Profile</h2>
+      <p class="subtitle">Your intent. Your location.</p>
+
+      {% if signup_err_generic %}
+      <div class="error-box">{{ error }}</div>
+      {% endif %}
+
+      <div class="oauth">
+        <a class="oauth-btn" href="/auth/google"><i class="fab fa-google"></i> Continue with Google</a>
+      </div>
+
+      <form id="signup-form" action="/signup" method="POST" novalidate>
+        <div class="group">
+          <label for="signup-username">Username</label>
+          <input id="signup-username" name="username" autocomplete="username" value="{{ request.form.get('username', '') }}" required>
+          {% if signup_err_username %}
+          <div class="field-error">{{ error }}</div>
+          {% endif %}
+          <div class="field-error hidden" id="signup-username-error"></div>
+        </div>
+
+        <div class="group">
+          <label for="signup-email">Email</label>
+          <input id="signup-email" type="email" name="email" autocomplete="email" placeholder="you@example.com" value="{{ request.form.get('email', '') }}" required>
+          {% if signup_err_email %}
+          <div class="field-error">{{ error }}</div>
+          {% endif %}
+          <div class="field-error hidden" id="signup-email-error"></div>
+        </div>
+
+        <div class="group">
+          <label for="signup-phone">Phone</label>
+          <input id="signup-phone" type="tel" name="phone" autocomplete="tel" placeholder="+91 555 123 4567" value="{{ request.form.get('phone', '') }}" required>
+          {% if signup_err_phone %}
+          <div class="field-error">{{ error }}</div>
+          {% endif %}
+          <div class="field-error hidden" id="signup-phone-error"></div>
+        </div>
+
+        <div class="group">
+          <label for="signup-password">Password</label>
+          <div class="input-wrap">
+            <input id="signup-password" type="password" name="password" autocomplete="new-password" required>
+            <button type="button" class="toggle-pass-btn" data-toggle-target="signup-password" aria-label="Show password">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+          {% if signup_err_password %}
+          <div class="field-error">{{ error }}</div>
+          {% endif %}
+          <div class="field-error hidden" id="signup-password-error"></div>
+        </div>
+
+        <div class="consent">
+          <label for="signup-consent">
+            <input id="signup-consent" type="checkbox" required>
+            <span>I agree to the <a href="/policy" target="_blank" rel="noopener noreferrer">Safety and Policy</a>.</span>
+          </label>
+          <div class="field-error hidden" id="signup-consent-error"></div>
+        </div>
+
+        <p class="helper">You will fill profile details on the next page.</p>
+        <button class="btn" type="submit">Join Spotlight</button>
+      </form>
+
+      <div class="toggle">Already here? <span data-open-tab="login">Log in</span></div>
+    </section>
   </div>
-</div>
-
-<!-- SIGNUP -->
-<div class="card backside">
-  <div class="card-content">
-    <h2>Create Profile</h2>
-    <p class="subtitle">Your intent. Your location.</p>
-    {% if error and show_signup %}
-    <div class="error-box">{{ error }}</div>
-    {% endif %}
-
-    <div class="oauth">
-      <a class="oauth-btn" href="/auth/google"><i class="fab fa-google"></i> Continue with Google</a>
-    </div>
-
-    <form action="/signup" method="POST">
-      <div class="group">
-        <label>Username</label>
-        <input name="username" required>
-      </div>
-
-      <div class="group">
-        <label>Email</label>
-        <input type="email" name="email" placeholder="you@example.com" required>
-      </div>
-
-      <div class="group">
-        <label>Phone</label>
-        <input type="tel" name="phone" pattern="\+?[0-9\-\s]{7,20}" placeholder="+1 555 123 4567" required>
-      </div>
-
-      <div class="group">
-        <label>Password</label>
-        <input type="password" name="password" required>
-      </div>
-
-      <p class="subtitle" style="margin:0 0 6px;text-align:left;">You will fill profile details on the next page.</p>
-
-      <button class="btn">Join Spotlight</button>
-    </form>
-
-    <div class="toggle">Already here? <span onclick="flip()">Log in</span></div>
-  </div>
-</div>
-
-</div>
 </div>
 
 <script>
-function flip(){
-  document.getElementById("flip").classList.toggle("flipped")
+const tabLoginBtn = document.getElementById("tab-login");
+const tabSignupBtn = document.getElementById("tab-signup");
+const loginPanel = document.getElementById("panel-login");
+const signupPanel = document.getElementById("panel-signup");
+const initialTab = "{{ 'signup' if show_signup else 'login' }}";
+
+function setActiveTab(tab) {
+  const showLogin = tab === "login";
+  tabLoginBtn.classList.toggle("active", showLogin);
+  tabLoginBtn.setAttribute("aria-selected", showLogin ? "true" : "false");
+  loginPanel.hidden = !showLogin;
+
+  tabSignupBtn.classList.toggle("active", !showLogin);
+  tabSignupBtn.setAttribute("aria-selected", !showLogin ? "true" : "false");
+  signupPanel.hidden = showLogin;
+}
+
+tabLoginBtn.addEventListener("click", () => setActiveTab("login"));
+tabSignupBtn.addEventListener("click", () => setActiveTab("signup"));
+document.querySelectorAll("[data-open-tab]").forEach((el) => {
+  el.addEventListener("click", () => setActiveTab(el.getAttribute("data-open-tab")));
+});
+
+setActiveTab(initialTab);
+
+document.querySelectorAll("[data-toggle-target]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const targetId = btn.getAttribute("data-toggle-target");
+    const input = document.getElementById(targetId);
+    if (!input) return;
+    const isHidden = input.type === "password";
+    input.type = isHidden ? "text" : "password";
+    btn.innerHTML = isHidden ? '<i class="fa-regular fa-eye-slash"></i>' : '<i class="fa-regular fa-eye"></i>';
+    btn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+  });
+});
+
+function showError(id, message) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.toggle("hidden", !message);
+}
+
+function clearErrors(ids) {
+  ids.forEach((id) => showError(id, ""));
+}
+
+const loginForm = document.getElementById("login-form");
+if (loginForm) {
+  loginForm.addEventListener("submit", (event) => {
+    clearErrors(["login-username-error", "login-password-error"]);
+    let valid = true;
+
+    const username = document.getElementById("login-username").value.trim();
+    const password = document.getElementById("login-password").value;
+
+    if (!username) {
+      showError("login-username-error", "Username is required.");
+      valid = false;
+    }
+    if (!password) {
+      showError("login-password-error", "Password is required.");
+      valid = false;
+    }
+
+    if (!valid) event.preventDefault();
+  });
+}
+
+const signupForm = document.getElementById("signup-form");
+if (signupForm) {
+  signupForm.addEventListener("submit", (event) => {
+    clearErrors([
+      "signup-username-error",
+      "signup-email-error",
+      "signup-phone-error",
+      "signup-password-error",
+      "signup-consent-error"
+    ]);
+
+    let valid = true;
+    const username = document.getElementById("signup-username").value.trim();
+    const email = document.getElementById("signup-email").value.trim();
+    const phone = document.getElementById("signup-phone").value.trim();
+    const password = document.getElementById("signup-password").value;
+    const consent = document.getElementById("signup-consent").checked;
+
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    const phoneRegex = /^\+?[0-9\-\s]{7,20}$/;
+
+    if (!username) {
+      showError("signup-username-error", "Username is required.");
+      valid = false;
+    }
+    if (!email) {
+      showError("signup-email-error", "Email is required.");
+      valid = false;
+    } else if (!emailRegex.test(email)) {
+      showError("signup-email-error", "Enter a valid email address.");
+      valid = false;
+    }
+    if (!phone) {
+      showError("signup-phone-error", "Phone is required.");
+      valid = false;
+    } else if (!phoneRegex.test(phone)) {
+      showError("signup-phone-error", "Enter a valid phone number.");
+      valid = false;
+    }
+    if (!password) {
+      showError("signup-password-error", "Password is required.");
+      valid = false;
+    } else if (password.length < 6) {
+      showError("signup-password-error", "Password must be at least 6 characters.");
+      valid = false;
+    }
+    if (!consent) {
+      showError("signup-consent-error", "Please accept Safety and Policy to continue.");
+      valid = false;
+    }
+
+    if (!valid) event.preventDefault();
+  });
 }
 </script>
 </body>

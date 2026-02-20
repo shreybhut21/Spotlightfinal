@@ -112,9 +112,9 @@ html, body {
   right: -2px;
   width: 8px;
   height: 8px;
-  background: var(--gold);
+  background: #ff3b30;
   border-radius: 50%;
-  box-shadow: 0 0 6px var(--gold);
+  box-shadow: 0 0 6px rgba(255, 59, 48, 0.9);
 }
 
 .bell-box {
@@ -151,6 +151,16 @@ html, body {
   color: var(--gold);
   font-size: 13px;
   flex-shrink: 0;
+}
+
+.notif-avatar.clickable {
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.notif-avatar.clickable:hover {
+  transform: translateY(-1px) scale(1.03);
+  border-color: rgba(255, 215, 0, 0.75);
 }
 
 .notif-text { flex: 1; min-width: 0; }

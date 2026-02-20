@@ -56,6 +56,20 @@
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 14px;
     }
+    .section-nav {
+      margin-bottom: 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .section-tab.is-active {
+      background: linear-gradient(120deg, #ffdf5e, #ffd700);
+      color: #000;
+      border: none;
+      box-shadow: 0 10px 30px rgba(255,215,0,0.25);
+    }
+    .admin-panel { display: none; }
+    .admin-panel.is-active { display: block; }
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -112,78 +126,134 @@
 <body>
   <header>
     <div class="title">Admin Dashboard</div>
-    
   </header>
 
-  <div class="grid">
-    <div class="card">
-      <div class="label">Total Users</div>
-      <div class="value">{{ stats.total_users }}</div>
-      <div class="sub">Registered accounts</div>
-    </div>
-    <div class="card">
-      <div class="label">Live Spotlights</div>
-      <div class="value">{{ stats.active_spotlights }}</div>
-      <div class="sub">Currently visible to active users</div>
-    </div>
-    <div class="card">
-      <div class="label">Active Matches</div>
-      <div class="value">{{ stats.active_matches }}</div>
-      <div class="sub">Pairs still in session</div>
-    </div>
-    <div class="card">
-      <div class="label">Total Reviews</div>
-      <div class="value">{{ stats.total_reviews }}</div>
-      <div class="sub">Feedback submitted</div>
-    </div>
-    <div class="card">
-      <div class="label">Avg Trust Score</div>
-      <div class="value">{{ stats.avg_trust or '—' }}</div>
-      <div class="sub">Across all users</div>
+  <div class="section-nav" aria-label="Admin sections">
+    <button class="ghost-btn section-tab is-active" data-panel="analytics-panel">Analytics</button>
+    <button class="ghost-btn section-tab" data-panel="users-panel">Users Table</button>
+    <button class="ghost-btn section-tab" data-panel="push-panel">Push Notification</button>
+    <button class="ghost-btn" onclick="window.location.href='/admin/reports'">Reports</button>
+  </div>
+
+  <div id="analytics-panel" class="admin-panel is-active">
+    <div class="grid">
+      <div class="card">
+        <div class="label">Total Users</div>
+        <div class="value">{{ stats.total_users }}</div>
+        <div class="sub">Registered accounts</div>
+      </div>
+      <div class="card">
+        <div class="label">Live Spotlights</div>
+        <div class="value">{{ stats.active_spotlights }}</div>
+        <div class="sub">Currently visible to active users</div>
+      </div>
+      <div class="card">
+        <div class="label">Active Matches</div>
+        <div class="value">{{ stats.active_matches }}</div>
+        <div class="sub">Pairs still in session</div>
+      </div>
+      <div class="card">
+        <div class="label">Total Reviews</div>
+        <div class="value">{{ stats.total_reviews }}</div>
+        <div class="sub">Feedback submitted</div>
+      </div>
+      <div class="card">
+        <div class="label">Avg Trust Score</div>
+        <div class="value">{{ stats.avg_trust or '—' }}</div>
+        <div class="sub">Across all users</div>
+      </div>
+      <div class="card">
+        <div class="label">Push Subscribers</div>
+        <div class="value">{{ stats.push_subscribers }}</div>
+        <div class="sub">Users with browser push enabled</div>
+      </div>
     </div>
   </div>
 
-  
+  <div id="push-panel" class="admin-panel">
+    <h2 style="margin-top:24px;margin-bottom:10px;font-size:18px;">Push Notification Campaign</h2>
+    <div class="card">
+      {% if not push_ready %}
+      <div class="sub" style="color:#fca5a5;margin-bottom:10px;">
+        Push is not configured. Set `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` in environment.
+      </div>
+      {% endif %}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+        <select id="push-target-type" style="padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:rgba(0,0,0,0.35); color:#fff; font-size:13px; outline:none;">
+          <option value="all">All active users</option>
+          <option value="single">Single user</option>
+        </select>
+        <input id="push-target-user" placeholder="Target user ID (for single user)" style="padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:rgba(0,0,0,0.35); color:#fff; font-size:13px; outline:none;">
+        <input id="push-title" maxlength="80" placeholder="Notification title" style="padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:rgba(0,0,0,0.35); color:#fff; font-size:13px; outline:none;">
+      </div>
+      <textarea id="push-message" maxlength="240" placeholder="Message (max 240 chars)" style="width:100%;margin-top:10px;padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:rgba(0,0,0,0.35); color:#fff; font-size:13px; outline:none; min-height:88px;"></textarea>
+      <div class="inline-actions" style="margin-top:10px;">
+        <button class="primary-btn" onclick="sendPushNotification()" {% if not push_ready %}disabled style="opacity:.6;cursor:not-allowed;"{% endif %}>Send Push</button>
+        <span id="push-result" class="sub"></span>
+      </div>
+    </div>
+  </div>
 
-  <h2 style="margin-top:26px;margin-bottom:10px;font-size:18px; display:flex; align-items:center; gap:12px;">
-    All Users
-    <input id="user-search" placeholder="Search by username or ID" style="flex:1; max-width:260px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:rgba(0,0,0,0.35); color:#fff; font-size:13px; outline:none;">
-  </h2>
-  <table class="table" aria-label="Users table" id="users-table">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Username</th>
-        <th>Trust</th>
-        <th>Status</th>
-        <th>Created</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for u in users %}
-      <tr data-user="{{ u.id }}">
-        <td>{{ u.id }}</td>
-        <td>{{ u.username }}</td>
-        <td>{{ u.trust_score }}</td>
-        <td class="status">{{ 'Active' if u.is_active else 'Blocked' }}</td>
-        <td class="created" data-ts="{{ u.created_at|float }}">—</td>
-        <td>
-          <button class="ghost-btn toggle-user-btn" onclick="toggleUser({{ u.id }}, {{ u.is_active|int }})">{{ 'Block' if u.is_active else 'Unblock' }}</button>
-          <button class="ghost-btn" style="border-color:#f87171;color:#fca5a5;" onclick="deleteUser({{ u.id }})">Delete</button>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div id="users-panel" class="admin-panel">
+    <h2 style="margin-top:26px;margin-bottom:10px;font-size:18px; display:flex; align-items:center; gap:12px;">
+      All Users
+      <input id="user-search" placeholder="Search by username or ID" style="flex:1; max-width:260px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:rgba(0,0,0,0.35); color:#fff; font-size:13px; outline:none;">
+    </h2>
+    <table class="table" aria-label="Users table" id="users-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Username</th>
+          <th>Trust</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr data-user="{{ u.id }}">
+          <td>{{ u.id }}</td>
+          <td>{{ u.username }}</td>
+          <td>{{ u.trust_score }}</td>
+          <td class="status">{{ 'Active' if u.is_active else 'Blocked' }}</td>
+          <td class="created" data-ts="{{ u.created_at|float }}">—</td>
+          <td>
+            <button class="ghost-btn" onclick="prefillPushUser({{ u.id }})">Notify</button>
+            <button class="ghost-btn toggle-user-btn" onclick="toggleUser({{ u.id }}, {{ u.is_active|int }})">{{ 'Block' if u.is_active else 'Unblock' }}</button>
+            <button class="ghost-btn" style="border-color:#f87171;color:#fca5a5;" onclick="deleteUser({{ u.id }})">Delete</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
-  <div class="inline-actions">
-    <button class="ghost-btn" onclick="window.location.href='/admin/reports'">Reports</button>
-    <button class="ghost-btn" onclick="window.location.href='/admin/reports/export'">Export CSV</button>
-    <button class="primary-btn" onclick="location.reload()">Refresh</button>
+    <div class="inline-actions">
+      <button class="ghost-btn" onclick="window.location.href='/admin/reports/export'">Export CSV</button>
+      <button class="primary-btn" onclick="location.reload()">Refresh</button>
+    </div>
   </div>
 
   <script>
+    const sectionTabs = document.querySelectorAll('.section-tab');
+    const adminPanels = document.querySelectorAll('.admin-panel');
+
+    function showAdminPanel(panelId) {
+      adminPanels.forEach(panel => {
+        panel.classList.toggle('is-active', panel.id === panelId);
+      });
+      sectionTabs.forEach(tab => {
+        tab.classList.toggle('is-active', tab.getAttribute('data-panel') === panelId);
+      });
+    }
+
+    sectionTabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const panelId = btn.getAttribute('data-panel');
+        if (panelId) showAdminPanel(panelId);
+      });
+    });
+
     const searchInput = document.getElementById('user-search');
     if (searchInput) {
       searchInput.addEventListener('input', () => {
@@ -234,6 +304,53 @@
       if (!res.ok) { alert('Delete failed'); return; }
       const row = document.querySelector(`tr[data-user="${id}"]`);
       if (row) row.remove();
+    }
+
+    function prefillPushUser(id) {
+      const targetType = document.getElementById('push-target-type');
+      const targetUser = document.getElementById('push-target-user');
+      if (targetType) targetType.value = 'single';
+      if (targetUser) targetUser.value = String(id);
+      showAdminPanel('push-panel');
+    }
+
+    async function sendPushNotification() {
+      const resultEl = document.getElementById('push-result');
+      const targetType = document.getElementById('push-target-type')?.value || 'all';
+      const targetUserRaw = (document.getElementById('push-target-user')?.value || '').trim();
+      const title = (document.getElementById('push-title')?.value || '').trim();
+      const message = (document.getElementById('push-message')?.value || '').trim();
+
+      if (!title || !message) {
+        alert('Title and message are required.');
+        return;
+      }
+
+      const payload = { target_type: targetType, title, message };
+      if (targetType === 'single') {
+        if (!targetUserRaw || Number.isNaN(Number(targetUserRaw))) {
+          alert('Enter a valid user ID for single-user push.');
+          return;
+        }
+        payload.target_user_id = Number(targetUserRaw);
+      }
+
+      if (resultEl) resultEl.textContent = 'Sending...';
+      const res = await fetch('/admin/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (resultEl) resultEl.textContent = data.error ? `Failed: ${data.error}` : 'Failed to send push.';
+        return;
+      }
+      if (resultEl) {
+        const targetedUsers = data.targeted_users ?? data.targeted ?? 0;
+        const targetedSubs = data.targeted_subscriptions ?? data.targeted ?? 0;
+        resultEl.textContent = `Users ${targetedUsers}, push sent ${data.sent_count}/${targetedSubs}, failed ${data.failed_count}, removed ${data.removed_subscriptions}`;
+      }
     }
   </script>
 </body>

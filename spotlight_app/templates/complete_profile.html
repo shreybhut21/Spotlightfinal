@@ -11,6 +11,8 @@
       --border: rgba(255, 255, 255, 0.12);
       --gold: #d4af37;
       --muted: #9d9d9d;
+      --ok: #86efac;
+      --danger: #fca5a5;
     }
 
     * { box-sizing: border-box; }
@@ -29,7 +31,7 @@
 
     .card {
       width: 100%;
-      max-width: 560px;
+      max-width: 620px;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 20px;
@@ -38,13 +40,48 @@
 
     h1 {
       margin: 0 0 8px;
-      font-size: 1.6rem;
+      font-size: 1.65rem;
     }
 
     .subtitle {
       margin: 0 0 18px;
       color: var(--muted);
       font-size: 0.95rem;
+    }
+
+    .progress-wrap {
+      margin-bottom: 16px;
+      border: 1px solid rgba(212, 175, 55, 0.28);
+      background: rgba(212, 175, 55, 0.08);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .progress-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.8rem;
+      color: #f3deb0;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+    }
+
+    .progress-bar > span {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: var(--gold);
+      box-shadow: 0 0 18px rgba(212, 175, 55, 0.5);
     }
 
     .error {
@@ -91,9 +128,53 @@
       font: inherit;
     }
 
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: rgba(212, 175, 55, 0.7);
+      box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.12);
+    }
+
     textarea {
       min-height: 96px;
       resize: vertical;
+    }
+
+    .helper {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.35;
+    }
+
+    .helper.ok {
+      color: var(--ok);
+    }
+
+    .helper.error {
+      color: var(--danger);
+      border: none;
+      background: none;
+      padding: 0;
+      margin-bottom: 0;
+    }
+
+    .email {
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .vibes-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .vibe-count {
+      font-size: 0.8rem;
+      color: #f3deb0;
     }
 
     .vibes {
@@ -102,7 +183,9 @@
       gap: 8px;
     }
 
-    .vibes input { display: none; }
+    .vibes input {
+      display: none;
+    }
 
     .chip {
       border: 1px solid var(--border);
@@ -111,6 +194,13 @@
       padding: 6px 12px;
       cursor: pointer;
       font-size: 0.85rem;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .chip:hover {
+      transform: translateY(-1px);
+      border-color: rgba(212, 175, 55, 0.5);
     }
 
     .vibes input:checked + .chip {
@@ -120,10 +210,12 @@
       font-weight: 600;
     }
 
-    .email {
-      margin-bottom: 14px;
-      color: var(--muted);
-      font-size: 0.9rem;
+    .bio-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 6px;
+      gap: 8px;
     }
 
     .btn {
@@ -135,12 +227,39 @@
       background: var(--gold);
       color: #111;
       cursor: pointer;
-      margin-top: 10px;
+      margin-top: 14px;
+      transition: transform 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 700px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
-  <form class="card" method="POST" action="/auth/complete-profile">
+  {% set fd = form_data or {} %}
+  <form
+    id="profileForm"
+    class="card"
+    method="POST"
+    action="/auth/complete-profile"
+    data-current-username="{{ user.username or '' }}"
+    data-max-vibes="{{ max_vibes or 5 }}"
+  >
+    <div class="progress-wrap">
+      <div class="progress-top">
+        <span>Profile Setup</span>
+        <span>Step 2/2</span>
+      </div>
+      <div class="progress-bar"><span></span></div>
+    </div>
+
     <h1>Complete Your Profile</h1>
     <p class="subtitle">Google sign-in worked. Add your details to continue.</p>
     <p class="email">Signed in as: {{ user.email }}</p>
@@ -151,54 +270,194 @@
 
     <div class="grid">
       <div class="field">
-        <label>Username</label>
-        <input name="username" value="{{ user.username or '' }}" required>
+        <label for="username">Username</label>
+        <input id="username" name="username" value="{{ fd.get('username', user.username or '') }}" required>
+        <p id="usernameStatus" class="helper">Choose a unique username.</p>
       </div>
 
       <div class="field">
-        <label>Gender</label>
-        <select name="gender" required>
-          <option value="" {{ '' == (user.gender or '') and 'selected' or '' }}>Select</option>
-          <option value="Male" {{ (user.gender or '') == 'Male' and 'selected' or '' }}>Male</option>
-          <option value="Female" {{ (user.gender or '') == 'Female' and 'selected' or '' }}>Female</option>
-          <option value="Other" {{ (user.gender or '') == 'Other' and 'selected' or '' }}>Other</option>
+        <label for="gender">Gender</label>
+        <select id="gender" name="gender" required>
+          <option value="" {{ '' == (fd.get('gender', user.gender or '')) and 'selected' or '' }}>Select</option>
+          <option value="Male" {{ (fd.get('gender', user.gender or '')) == 'Male' and 'selected' or '' }}>Male</option>
+          <option value="Female" {{ (fd.get('gender', user.gender or '')) == 'Female' and 'selected' or '' }}>Female</option>
+          <option value="Other" {{ (fd.get('gender', user.gender or '')) == 'Other' and 'selected' or '' }}>Other</option>
         </select>
       </div>
 
       <div class="field">
-        <label>Birth Date</label>
-        <input type="date" name="dob" value="{{ user.dob or '' }}" required>
+        <label for="dob">Birth Date</label>
+        <input id="dob" type="date" name="dob" value="{{ fd.get('dob', user.dob or '') }}" required>
       </div>
 
       <div class="field">
-        <label>Phone</label>
-        <input type="tel" name="phone" value="{{ user.phone or '' }}" pattern="\+?[0-9\-\s]{7,20}" placeholder="+1 555 123 4567" required>
+        <label for="phone">Phone</label>
+        <input id="phone" type="tel" name="phone" value="{{ fd.get('phone', user.phone or '') }}" pattern="\+?[0-9\-\s]{7,20}" placeholder="+1 555 123 4567" required>
+        <p class="helper">Use digits, spaces, and dashes. Country code is optional.</p>
       </div>
 
       <div class="field full">
-        <label>Your Vibes</label>
-        <div class="vibes">
-          <input id="v1" type="checkbox" name="vibes" value="Chill" {{ 'Chill' in selected_vibes and 'checked' or '' }}>
-          <label class="chip" for="v1">Chill</label>
-
-          <input id="v2" type="checkbox" name="vibes" value="DeepTalks" {{ 'DeepTalks' in selected_vibes and 'checked' or '' }}>
-          <label class="chip" for="v2">Deep Talks</label>
-
-          <input id="v3" type="checkbox" name="vibes" value="Exploring" {{ 'Exploring' in selected_vibes and 'checked' or '' }}>
-          <label class="chip" for="v3">Exploring</label>
-
-          <input id="v4" type="checkbox" name="vibes" value="Drinks" {{ 'Drinks' in selected_vibes and 'checked' or '' }}>
-          <label class="chip" for="v4">Drinks</label>
+        <div class="vibes-top">
+          <label style="margin:0;" for="vibes-wrap">Your Vibes</label>
+          <span class="vibe-count" id="vibeCount">0/{{ max_vibes or 5 }} selected</span>
         </div>
+
+        <div class="vibes" id="vibes-wrap">
+          {% for value, label in vibe_options %}
+            {% set cid = "vibe_" ~ loop.index %}
+            <input id="{{ cid }}" type="checkbox" name="vibes" value="{{ value }}" {{ value in selected_vibes and 'checked' or '' }}>
+            <label class="chip" for="{{ cid }}">{{ label }}</label>
+          {% endfor %}
+        </div>
+        <p id="vibeHint" class="helper">Pick at least 1 vibe, up to {{ max_vibes or 5 }}.</p>
       </div>
 
       <div class="field full">
-        <label>Bio</label>
-        <textarea name="bio" maxlength="280" placeholder="Tell people a little about you...">{{ user.bio or '' }}</textarea>
+        <label for="bio">Bio</label>
+        <textarea id="bio" name="bio" maxlength="280" placeholder="Tell people a little about you...">{{ fd.get('bio', user.bio or '') }}</textarea>
+        <div class="bio-meta">
+          <p class="helper" style="margin:0;">Keep it clear and friendly.</p>
+          <p id="bioCount" class="helper" style="margin:0;">0/280</p>
+        </div>
       </div>
     </div>
 
     <button class="btn" type="submit">Save and Continue</button>
   </form>
+
+  <script>
+    const form = document.getElementById("profileForm");
+    const usernameInput = document.getElementById("username");
+    const usernameStatus = document.getElementById("usernameStatus");
+    const bioInput = document.getElementById("bio");
+    const bioCount = document.getElementById("bioCount");
+    const vibeBoxes = Array.from(document.querySelectorAll('input[name="vibes"]'));
+    const vibeCount = document.getElementById("vibeCount");
+    const vibeHint = document.getElementById("vibeHint");
+
+    const currentUsername = (form.dataset.currentUsername || "").trim();
+    const maxVibes = Number(form.dataset.maxVibes || 5);
+
+    let usernameTimer = null;
+    let usernameLastChecked = "";
+    let usernameResult = "unknown"; // available | taken | invalid | unknown
+
+    function setHelperState(el, text, state) {
+      el.textContent = text;
+      el.classList.remove("ok", "error");
+      if (state === "ok") el.classList.add("ok");
+      if (state === "error") el.classList.add("error");
+    }
+
+    function updateBioCount() {
+      bioCount.textContent = `${bioInput.value.length}/280`;
+    }
+
+    function selectedVibeCount() {
+      return vibeBoxes.filter((v) => v.checked).length;
+    }
+
+    function updateVibeUI(lastChanged = null) {
+      let count = selectedVibeCount();
+      if (count > maxVibes && lastChanged) {
+        lastChanged.checked = false;
+        count = selectedVibeCount();
+        setHelperState(vibeHint, `You can select up to ${maxVibes} vibes.`, "error");
+      } else {
+        setHelperState(vibeHint, `Pick at least 1 vibe, up to ${maxVibes}.`, "");
+      }
+      vibeCount.textContent = `${count}/${maxVibes} selected`;
+    }
+
+    async function checkUsernameAvailability(force = false) {
+      const username = usernameInput.value.trim();
+      if (!username) {
+        usernameResult = "invalid";
+        setHelperState(usernameStatus, "Username is required.", "error");
+        return usernameResult;
+      }
+
+      if (username === currentUsername) {
+        usernameResult = "available";
+        setHelperState(usernameStatus, "Keeping your current username.", "ok");
+        return usernameResult;
+      }
+
+      if (!force && username === usernameLastChecked) {
+        return usernameResult;
+      }
+
+      const checkValue = username;
+      usernameLastChecked = username;
+      usernameResult = "unknown";
+      setHelperState(usernameStatus, "Checking availability...", "");
+
+      try {
+        const res = await fetch(`/api/username_available?username=${encodeURIComponent(checkValue)}`);
+        if (usernameInput.value.trim() !== checkValue) return usernameResult;
+
+        if (!res.ok) {
+          usernameResult = "unknown";
+          setHelperState(usernameStatus, "Could not verify now. We will validate on save.", "");
+          return usernameResult;
+        }
+
+        const payload = await res.json().catch(() => ({}));
+        if (payload.available) {
+          usernameResult = "available";
+          setHelperState(usernameStatus, "Username is available.", "ok");
+        } else {
+          usernameResult = "taken";
+          setHelperState(usernameStatus, "Username is already taken.", "error");
+        }
+        return usernameResult;
+      } catch (_) {
+        if (usernameInput.value.trim() !== checkValue) return usernameResult;
+        usernameResult = "unknown";
+        setHelperState(usernameStatus, "Could not verify now. We will validate on save.", "");
+        return usernameResult;
+      }
+    }
+
+    usernameInput.addEventListener("input", () => {
+      clearTimeout(usernameTimer);
+      usernameTimer = setTimeout(() => {
+        checkUsernameAvailability(false);
+      }, 350);
+    });
+    usernameInput.addEventListener("blur", () => checkUsernameAvailability(true));
+
+    vibeBoxes.forEach((box) => {
+      box.addEventListener("change", (event) => updateVibeUI(event.target));
+    });
+
+    bioInput.addEventListener("input", updateBioCount);
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      updateVibeUI();
+
+      const count = selectedVibeCount();
+      if (count < 1) {
+        setHelperState(vibeHint, "Select at least 1 vibe.", "error");
+        return;
+      }
+      if (count > maxVibes) {
+        setHelperState(vibeHint, `You can select up to ${maxVibes} vibes.`, "error");
+        return;
+      }
+
+      const check = await checkUsernameAvailability(true);
+      if (check === "invalid" || check === "taken") {
+        return;
+      }
+
+      form.submit();
+    });
+
+    updateBioCount();
+    updateVibeUI();
+    checkUsernameAvailability(false);
+  </script>
 </body>
 </html>

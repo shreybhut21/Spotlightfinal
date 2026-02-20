@@ -6,29 +6,51 @@
   <title>My Profile</title>
 
   <style>
+    :root {
+      --bg: #050505;
+      --card: #171717;
+      --border: #313131;
+      --text: #f4f4f4;
+      --muted: #9b9b9b;
+      --gold: #d4af37;
+      --danger: #fca5a5;
+      --ok: #86efac;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      background: #050505;
-      color: #fff;
+      background: var(--bg);
+      color: var(--text);
       font-family: system-ui, sans-serif;
       margin: 0;
       padding: 20px;
     }
 
     .settings-container {
-      max-width: 520px;
+      max-width: 640px;
       margin: auto;
     }
 
     h2 {
-      margin-bottom: 20px;
+      margin: 0 0 18px;
     }
 
     .card {
-      background: #1a1a1a;
+      background: var(--card);
       border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 20px;
-      border: 1px solid #333;
+      padding: 18px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .card-title {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f0f0f0;
     }
 
     .row {
@@ -36,29 +58,123 @@
       justify-content: space-between;
       margin-bottom: 10px;
       color: #ccc;
+      gap: 12px;
     }
 
     .label {
-      color: #888;
+      color: var(--muted);
+      font-size: 0.87rem;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field {
+      margin-bottom: 10px;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid #3a3a3a;
+      background: #111;
+      color: #eee;
+      padding: 10px 12px;
+      font: inherit;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: rgba(212, 175, 55, 0.65);
+      box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.12);
+    }
+
+    input[readonly] {
+      opacity: 0.8;
+      cursor: not-allowed;
+    }
+
+    .helper {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+
+    .helper.ok {
+      color: var(--ok);
+    }
+
+    .helper.error {
+      color: var(--danger);
+    }
+
+    .vibes-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+
+    .vibe-count {
+      font-size: 0.8rem;
+      color: #d9c58a;
     }
 
     .vibes {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 8px;
+    }
+
+    .vibes input {
+      display: none;
     }
 
     .vibe {
       background: #222;
-      border: 1px solid #333;
+      border: 1px solid #3a3a3a;
+      color: #bdbdbd;
       padding: 6px 12px;
       border-radius: 20px;
       font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .vibe:hover {
+      border-color: rgba(212, 175, 55, 0.5);
+    }
+
+    .vibes input:checked + .vibe {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #101010;
+      font-weight: 600;
+    }
+
+    .bio-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      font-size: 12px;
     }
 
     .btn {
-      padding: 14px;
+      padding: 12px;
       border-radius: 12px;
       border: none;
       cursor: pointer;
@@ -68,7 +184,7 @@
     }
 
     .primary {
-      background: #d4af37;
+      background: var(--gold);
       color: #000;
     }
 
@@ -78,11 +194,40 @@
       border: 1px solid #333;
     }
 
-    .feedback {
+    .feedback-summary {
+      color: #bdbdbd;
+      margin-bottom: 10px;
       font-size: 0.9rem;
-      color: #aaa;
-      margin-top: 10px;
-      line-height: 1.45;
+    }
+
+    .feedback-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .feedback-item {
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 10px;
+      background: #121212;
+    }
+
+    .feedback-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.84rem;
+      color: #d7d7d7;
+      margin-bottom: 4px;
+    }
+
+    .feedback-comment {
+      color: #b2b2b2;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      margin-bottom: 4px;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
     .feedback-empty {
@@ -94,11 +239,64 @@
       background: #141414;
     }
 
-    .feedback-main {
-      font-size: 1rem;
-      color: #f2f2f2;
-      font-weight: 600;
-      margin-bottom: 4px;
+    .pager {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      gap: 8px;
+    }
+
+    .pager button {
+      border: 1px solid #3a3a3a;
+      background: #1e1e1e;
+      color: #ddd;
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .pager button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .trust-box {
+      color: #c7c7c7;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .trust-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .info-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid rgba(212, 175, 55, 0.45);
+      background: rgba(212, 175, 55, 0.12);
+      color: var(--gold);
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .info-btn:hover {
+      background: rgba(212, 175, 55, 0.2);
+    }
+
+    .trust-line {
+      margin-bottom: 6px;
+    }
+
+    .hidden {
+      display: none !important;
     }
 
     .actions {
@@ -111,51 +309,100 @@
     .actions .btn {
       margin-top: 0;
     }
+
+    @media (max-width: 700px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
 
-<div class="settings-container">
+<div class="settings-container" data-max-vibes="{{ max_vibes or 5 }}">
   <h2>My Profile</h2>
 
-  <!-- BASIC INFO -->
+  <!-- PROFILE -->
   <div class="card">
-    <div class="row"><span class="label">Username</span><span>{{ user.username }}</span></div>
-    <div class="row"><span class="label">Gender</span><span>{{ user.gender or '-' }}</span></div>
-    <div class="row"><span class="label">Age</span><span id="ageBox">—</span></div>
-    <div class="row"><span class="label">Trust Score</span><span>{{ user.trust_score }}</span></div>
-    <div class="row"><span class="label">Phone</span><span>{{ user.phone or '-' }}</span></div>
+    <h3 class="card-title">Profile Details</h3>
+
+    <div class="grid">
+      <div class="field">
+        <span class="label">Username</span>
+        <input value="{{ user.username }}" readonly>
+      </div>
+
+      <div class="field">
+        <span class="label">Age</span>
+        <input id="ageBox" value="-" readonly>
+      </div>
+
+      <div class="field">
+        <span class="label">Gender</span>
+        <input value="{{ user.gender or '-' }}" readonly>
+      </div>
+
+      <div class="field">
+        <span class="label">Phone</span>
+        <input value="{{ user.phone or '-' }}" readonly>
+        <div class="helper">Phone changes are disabled right now.</div>
+      </div>
+
+      <div class="field full">
+        <div class="vibes-head">
+          <span class="label" style="margin:0;">Vibes</span>
+          <span class="vibe-count" id="vibeCount">0/{{ max_vibes or 5 }} selected</span>
+        </div>
+        <div class="vibes" id="vibeWrap">
+          {% for value, label in vibe_options %}
+            {% set cid = "settings_vibe_" ~ loop.index %}
+            <input id="{{ cid }}" type="checkbox" name="vibes" value="{{ value }}" {{ value in vibes and 'checked' or '' }}>
+            <label class="vibe" for="{{ cid }}">{{ label }}</label>
+          {% endfor %}
+        </div>
+        <div class="helper" id="vibeHelper">Pick at least 1 vibe, up to {{ max_vibes or 5 }}.</div>
+      </div>
+    </div>
+
+    <button class="btn primary" onclick="saveProfile()">Save Vibes</button>
+    <div class="helper" id="profileHelper">Update your vibe preferences.</div>
+  </div>
+
+  <!-- TRUST -->
+  <div class="card">
+    <div class="trust-head">
+      <h3 class="card-title" style="margin:0;">Trust Score: {{ user.trust_score }}</h3>
+      <button class="info-btn" type="button" onclick="toggleTrustInfo()" aria-label="Trust score info">i</button>
+    </div>
+    <div id="trustInfoBox" class="trust-box hidden">
+      <div class="trust-line">Ratings 6 to 10 increase trust over time.</div>
+      <div class="trust-line">Ratings 1 to 4 reduce trust, while 5 is neutral.</div>
+      <div class="trust-line">The system keeps trust score between 50 and 150.</div>
+      <div class="trust-line">Reliable meetups and respectful behavior lead to better trust visibility.</div>
+    </div>
   </div>
 
   <!-- BIO -->
   <div class="card">
-    <div class="label">About Me</div>
-    <textarea id="bioInput" maxlength="280" style="width:100%;margin-top:8px;min-height:110px;background:#111;border:1px solid #333;color:#eee;border-radius:12px;padding:10px;font-family:inherit;">{{ user.bio or "" }}</textarea>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;color:#888;font-size:12px;">
-      <span id="bioHelper">Write a short intro.</span>
-      <span id="bioCount">0/280</span>
+    <h3 class="card-title">About Me</h3>
+    <textarea id="bioInput" maxlength="280">{{ user.bio or "" }}</textarea>
+    <div class="bio-meta">
+      <span class="helper" id="bioHelper" style="margin:0;">Write a short intro.</span>
+      <span class="helper" id="bioCount" style="margin:0;">0/280</span>
     </div>
-    <button class="btn primary" style="margin-top:12px" onclick="saveBio()">Save Bio</button>
-  </div>
-
-  <!-- VIBES -->
-  <div class="card">
-    <div class="label">My Vibes</div>
-    <div class="vibes">
-      {% if user.vibe_tags %}
-        {% for v in user.vibe_tags.split(',') %}
-          <span class="vibe">{{ v }}</span>
-        {% endfor %}
-      {% else %}
-        <span class="vibe">No vibes selected</span>
-      {% endif %}
-    </div>
+    <button class="btn primary" onclick="saveBio()">Save Bio</button>
   </div>
 
   <!-- FEEDBACK -->
   <div class="card">
-    <div class="label">Community Feedback</div>
-    <div id="feedbackBox" class="feedback">Loading feedback…</div>
+    <h3 class="card-title">Recent Reviews</h3>
+    <div id="feedbackSummary" class="feedback-summary">Loading feedback...</div>
+    <div id="feedbackList" class="feedback-list"></div>
+    <div class="pager">
+      <button id="prevFeedbackBtn" onclick="changeFeedbackPage(-1)">Previous</button>
+      <span class="helper" id="feedbackPageText" style="margin:0;">Page 1</span>
+      <button id="nextFeedbackBtn" onclick="changeFeedbackPage(1)">Next</button>
+    </div>
   </div>
 
   <div class="actions">
@@ -165,55 +412,111 @@
 </div>
 
 <script>
-  // -------- AGE CALC --------
   const dob = "{{ user.dob or '' }}";
+  const maxVibes = Number(document.querySelector(".settings-container").dataset.maxVibes || 5);
+  const vibeBoxes = Array.from(document.querySelectorAll('input[name="vibes"]'));
+  const vibeCount = document.getElementById("vibeCount");
+  const vibeHelper = document.getElementById("vibeHelper");
+  const profileHelper = document.getElementById("profileHelper");
+  const bioInput = document.getElementById("bioInput");
+  const bioCount = document.getElementById("bioCount");
+  const bioHelper = document.getElementById("bioHelper");
+
+  let feedbackPage = 1;
+  const feedbackPerPage = 5;
+  let feedbackTotalPages = 1;
+
+  function setHelper(el, text, state) {
+    el.textContent = text;
+    el.classList.remove("ok", "error");
+    if (state) el.classList.add(state);
+  }
+
+  // Age
   if (dob) {
     const birth = new Date(dob);
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
     const m = today.getMonth() - birth.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-    document.getElementById("ageBox").innerText = age;
+    document.getElementById("ageBox").value = age > 0 ? age : "-";
   } else {
-    document.getElementById("ageBox").innerText = "-";
+    document.getElementById("ageBox").value = "-";
   }
 
-  // -------- FEEDBACK --------
-  fetch("/api/my_feedback")
-    .then(r => r.json())
-    .then(data => {
-      const box = document.getElementById("feedbackBox");
-      if (!data.count) {
-        box.innerHTML = `
-          <div class="feedback-empty">
-            <div class="feedback-main">No feedback yet</div>
-            <div>Your reviews will appear here after your first meetup.</div>
-          </div>
-        `;
-        return;
-      }
-      box.innerHTML = `
-        <div class="feedback-main">⭐ ${data.average}/10</div>
-        <div>from ${data.count} ${data.count === 1 ? "person" : "people"}</div>
-      `;
+  // Vibes
+  function getSelectedVibes() {
+    return vibeBoxes.filter((box) => box.checked).map((box) => box.value);
+  }
+
+  function updateVibeCount(lastChanged = null) {
+    let selected = getSelectedVibes();
+    if (selected.length > maxVibes && lastChanged) {
+      lastChanged.checked = false;
+      selected = getSelectedVibes();
+      setHelper(vibeHelper, `You can select up to ${maxVibes} vibes.`, "error");
+    } else {
+      setHelper(vibeHelper, `Pick at least 1 vibe, up to ${maxVibes}.`, "");
+    }
+    vibeCount.textContent = `${selected.length}/${maxVibes} selected`;
+  }
+
+  vibeBoxes.forEach((box) => {
+    box.addEventListener("change", (event) => updateVibeCount(event.target));
+  });
+  updateVibeCount();
+
+  // Save profile details
+  window.saveProfile = async function () {
+    const vibes = getSelectedVibes();
+
+    if (vibes.length < 1) {
+      setHelper(profileHelper, "Select at least 1 vibe.", "error");
+      return;
+    }
+    if (vibes.length > maxVibes) {
+      setHelper(profileHelper, `Select up to ${maxVibes} vibes.`, "error");
+      return;
+    }
+
+    const res = await fetch("/api/update_profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vibes })
     });
+    const payload = await res.json().catch(() => ({}));
 
-  // -------- BIO SAVE --------
-  const bioInput = document.getElementById("bioInput");
-  const bioCount = document.getElementById("bioCount");
-  const bioHelper = document.getElementById("bioHelper");
+    if (!res.ok) {
+      if (payload.error === "vibes_required") {
+        setHelper(profileHelper, "Select at least 1 vibe.", "error");
+      } else if (payload.error === "too_many_vibes") {
+        setHelper(profileHelper, `Select up to ${maxVibes} vibes.`, "error");
+      } else {
+        setHelper(profileHelper, "Could not save vibes.", "error");
+      }
+      return;
+    }
 
-  function updateCount() {
-    const len = bioInput.value.length;
-    bioCount.innerText = `${len}/280`;
+    setHelper(profileHelper, "Vibes saved.", "ok");
+  };
+
+  window.toggleTrustInfo = function () {
+    const box = document.getElementById("trustInfoBox");
+    if (!box) return;
+    box.classList.toggle("hidden");
+  };
+
+  // Bio save
+  function updateBioCount() {
+    bioCount.textContent = `${bioInput.value.length}/280`;
   }
-  updateCount();
-  bioInput.addEventListener("input", updateCount);
+  updateBioCount();
+  bioInput.addEventListener("input", updateBioCount);
 
   window.saveBio = async function () {
     const bio = bioInput.value.trim();
     if (bio.length > 280) {
-      alert("Bio too long");
+      setHelper(bioHelper, "Bio is too long.", "error");
       return;
     }
     const res = await fetch("/api/update_bio", {
@@ -222,12 +525,93 @@
       body: JSON.stringify({ bio })
     });
     if (!res.ok) {
-      alert("Could not save bio");
+      setHelper(bioHelper, "Could not save bio.", "error");
       return;
     }
-    bioHelper.innerText = "Saved!";
-    setTimeout(() => bioHelper.innerText = "Write a short intro.", 2000);
+    setHelper(bioHelper, "Bio saved.", "ok");
   };
+
+  // Feedback pagination
+  async function loadFeedback(page = 1) {
+    const summaryEl = document.getElementById("feedbackSummary");
+    const listEl = document.getElementById("feedbackList");
+    const prevBtn = document.getElementById("prevFeedbackBtn");
+    const nextBtn = document.getElementById("nextFeedbackBtn");
+    const pageText = document.getElementById("feedbackPageText");
+
+    summaryEl.textContent = "Loading feedback...";
+    listEl.innerHTML = "";
+
+    const res = await fetch(`/api/my_feedback?page=${page}&per_page=${feedbackPerPage}`);
+    if (!res.ok) {
+      summaryEl.textContent = "Unable to load feedback.";
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      pageText.textContent = "Page -";
+      return;
+    }
+
+    const data = await res.json();
+    const count = Number(data.count || 0);
+    const average = data.average;
+    const reviews = data.reviews || [];
+
+    feedbackPage = Number(data.page || 1);
+    feedbackTotalPages = Number(data.total_pages || 0);
+
+    if (!count) {
+      summaryEl.textContent = "No feedback yet.";
+      listEl.innerHTML = `
+        <div class="feedback-empty">
+          Your reviews will appear here after your first meetup.
+        </div>
+      `;
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      pageText.textContent = "Page 0";
+      return;
+    }
+
+    summaryEl.textContent = `Average ${average}/10 from ${count} ${count === 1 ? "person" : "people"}`;
+
+    listEl.innerHTML = reviews.map((r) => `
+      <div class="feedback-item">
+        <div class="feedback-head">
+          <span><strong>${escapeHtml(r.by || "User")}</strong></span>
+          <span>⭐ ${r.rating}/10</span>
+        </div>
+        ${r.comment ? `<div class="feedback-comment">${escapeHtml(r.comment)}</div>` : ""}
+        <div class="helper" style="margin:0;">${formatDate(r.created_at)}</div>
+      </div>
+    `).join("");
+
+    prevBtn.disabled = !data.has_prev;
+    nextBtn.disabled = !data.has_next;
+    pageText.textContent = `Page ${feedbackPage}${feedbackTotalPages ? ` of ${feedbackTotalPages}` : ""}`;
+  }
+
+  window.changeFeedbackPage = function (delta) {
+    const target = feedbackPage + delta;
+    if (target < 1) return;
+    if (feedbackTotalPages && target > feedbackTotalPages) return;
+    loadFeedback(target);
+  };
+
+  function formatDate(ts) {
+    if (!ts) return "";
+    return new Date(ts * 1000).toLocaleString();
+  }
+
+  function escapeHtml(text) {
+    return String(text || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  loadFeedback(1);
 </script>
 
 </body>

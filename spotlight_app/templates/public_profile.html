@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ user.username }} | Profile</title>
+  <style>
+    :root {
+      --bg: #050505;
+      --card: #171717;
+      --border: #313131;
+      --text: #f4f4f4;
+      --muted: #9b9b9b;
+      --gold: #d4af37;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, sans-serif;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: auto;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f0f0f0;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      color: #ccc;
+    }
+
+    .label {
+      color: var(--muted);
+    }
+
+    .bio {
+      color: #d3d3d3;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .vibes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .vibe {
+      border-radius: 20px;
+      border: 1px solid rgba(212, 175, 55, 0.38);
+      background: rgba(212, 175, 55, 0.1);
+      color: #e8d39b;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+    }
+
+    .feedback-summary {
+      color: #bdbdbd;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+    }
+
+    .feedback-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .feedback-item {
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 10px;
+      background: #121212;
+    }
+
+    .feedback-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.84rem;
+      color: #d7d7d7;
+      margin-bottom: 4px;
+    }
+
+    .feedback-comment {
+      color: #b2b2b2;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      margin-bottom: 4px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .feedback-empty {
+      border: 1px dashed #3a3a3a;
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      color: #9a9a9a;
+      background: #141414;
+    }
+
+    .trust-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .info-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid rgba(212, 175, 55, 0.45);
+      background: rgba(212, 175, 55, 0.12);
+      color: var(--gold);
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .info-btn:hover {
+      background: rgba(212, 175, 55, 0.2);
+    }
+
+    .trust-box {
+      color: #c7c7c7;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .trust-line {
+      margin-bottom: 6px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .incoming-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .btn {
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      width: 100%;
+    }
+
+    .primary {
+      background: var(--gold);
+      color: #000;
+    }
+
+    .secondary {
+      background: #222;
+      color: #fff;
+      border: 1px solid #333;
+    }
+
+    .danger {
+      background: #3a1515;
+      color: #ffd4d4;
+      border: 1px solid #5a2222;
+    }
+
+    .helper {
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>{{ user.username }}'s Profile</h2>
+
+  <div class="card">
+    <h3 class="card-title">Basic Info</h3>
+    <div class="row"><span class="label">Username</span><span>{{ user.username }}</span></div>
+    <div class="row"><span class="label">Gender</span><span>{{ user.gender or "-" }}</span></div>
+    <div class="row"><span class="label">Age</span><span>{{ age if age is not none else "-" }}</span></div>
+    <div class="row"><span class="label">Phone</span><span>{{ user.phone or "-" }}</span></div>
+  </div>
+
+  <div class="card">
+    <div class="trust-head">
+      <h3 class="card-title" style="margin:0;">Trust Score: {{ user.trust_score }}</h3>
+      <button class="info-btn" type="button" onclick="toggleTrustInfo()" aria-label="Trust score info">i</button>
+    </div>
+    <div id="trustInfoBox" class="trust-box hidden">
+      <div class="trust-line">Ratings 6 to 10 increase trust over time.</div>
+      <div class="trust-line">Ratings 1 to 4 reduce trust, while 5 is neutral.</div>
+      <div class="trust-line">The system keeps trust score between 50 and 150.</div>
+      <div class="trust-line">Reliable meetups and respectful behavior lead to better trust visibility.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">About</h3>
+    <div class="bio">{{ user.bio or "No bio yet." }}</div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">Vibes</h3>
+    <div class="vibes">
+      {% if vibes %}
+        {% for v in vibes %}
+          <span class="vibe">{{ v }}</span>
+        {% endfor %}
+      {% else %}
+        <span class="helper">No vibes selected.</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">Recent Reviews</h3>
+    <div id="feedbackSummary" class="feedback-summary">Loading feedback...</div>
+    <div id="feedbackList" class="feedback-list"></div>
+  </div>
+
+  {% if incoming_request_id %}
+  <div class="card" id="incomingRequestCard" data-request-id="{{ incoming_request_id }}">
+    <h3 class="card-title">Incoming Request</h3>
+    <div class="helper">You can accept or decline this pending request from {{ user.username }}.</div>
+    <div class="incoming-actions">
+      <button class="btn primary" onclick="respondIncomingRequest('accept')">Accept</button>
+      <button class="btn danger" onclick="respondIncomingRequest('decline')">Decline</button>
+    </div>
+    <div id="incomingRequestStatus" class="helper"></div>
+  </div>
+  {% endif %}
+
+  <div class="actions">
+    <button class="btn primary" onclick="location.href='/index.html'">Back to Map</button>
+  </div>
+</div>
+
+<script>
+  function toggleTrustInfo() {
+    const box = document.getElementById("trustInfoBox");
+    if (!box) return;
+    box.classList.toggle("hidden");
+  }
+
+  async function loadFeedback() {
+    const summaryEl = document.getElementById("feedbackSummary");
+    const listEl = document.getElementById("feedbackList");
+
+    const res = await fetch("/api/user_feedback/{{ user.id }}");
+    if (!res.ok) {
+      summaryEl.textContent = "Unable to load feedback.";
+      listEl.innerHTML = "";
+      return;
+    }
+
+    const data = await res.json();
+    const reviews = data.reviews || [];
+    const count = Number(data.count || 0);
+
+    if (!count) {
+      summaryEl.textContent = "No feedback yet.";
+      listEl.innerHTML = `
+        <div class="feedback-empty">
+          Reviews will appear here after meetups.
+        </div>
+      `;
+      return;
+    }
+
+    const avg = (reviews.reduce((acc, r) => acc + Number(r.rating || 0), 0) / count).toFixed(1);
+    summaryEl.textContent = `Average ${avg}/10 from ${count} ${count === 1 ? "person" : "people"}`;
+
+    listEl.innerHTML = reviews.map((r) => `
+      <div class="feedback-item">
+        <div class="feedback-head">
+          <span><strong>${escapeHtml(r.by || "User")}</strong></span>
+          <span>⭐ ${r.rating}/10</span>
+        </div>
+        ${r.comment ? `<div class="feedback-comment">${escapeHtml(r.comment)}</div>` : ""}
+        <div class="helper">${formatDate(r.created_at)}</div>
+      </div>
+    `).join("");
+  }
+
+  function formatDate(ts) {
+    if (!ts) return "";
+    return new Date(ts * 1000).toLocaleString();
+  }
+
+  function escapeHtml(text) {
+    return String(text || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  async function respondIncomingRequest(action) {
+    const card = document.getElementById("incomingRequestCard");
+    const statusEl = document.getElementById("incomingRequestStatus");
+    if (!card) return;
+
+    const requestId = Number(card.dataset.requestId || 0);
+    if (!requestId) return;
+
+    const buttons = card.querySelectorAll("button");
+    buttons.forEach((b) => { b.disabled = true; });
+    if (statusEl) statusEl.textContent = "Processing...";
+
+    const res = await fetch("/api/respond_request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ request_id: requestId, action })
+    });
+
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (statusEl) {
+        statusEl.textContent = payload.error === "not_found"
+          ? "This request is no longer pending."
+          : "Could not update request.";
+      }
+      buttons.forEach((b) => { b.disabled = false; });
+      return;
+    }
+
+    if (statusEl) statusEl.textContent = action === "accept" ? "Request accepted. Opening map..." : "Request declined.";
+    window.location.href = "/index.html";
+  }
+
+  loadFeedback();
+</script>
+</body>
+</html>

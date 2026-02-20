@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spotlight | Don’t Swipe. Meet Nearby.</title>
+  <title>Spotlight | Don't Swipe. Meet Nearby.</title>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,21 +19,21 @@
   <style>
     :root {
       --gold: #d4af37;
-      --gold-glow: rgba(212,175,55,0.5);
+      --gold-glow: rgba(212, 175, 55, 0.5);
       --bg: #050505;
-      --glass: rgba(255,255,255,0.035);
-      --border: rgba(255,255,255,0.1);
+      --glass: rgba(255, 255, 255, 0.035);
+      --border: rgba(255, 255, 255, 0.1);
     }
 
     body {
-      font-family: 'Outfit', sans-serif;
+      font-family: "Outfit", sans-serif;
       background: var(--bg);
       color: #e6e6e6;
       overflow-x: hidden;
     }
 
-    h1,h2,h3 {
-      font-family: 'Playfair Display', serif;
+    h1, h2, h3 {
+      font-family: "Playfair Display", serif;
     }
 
     .glass-card {
@@ -47,8 +47,9 @@
       background: var(--gold);
       color: #000;
       font-weight: 700;
-      transition: all .3s ease;
+      transition: all 0.3s ease;
     }
+
     .btn-primary:hover {
       transform: translateY(-2px);
       box-shadow: 0 0 30px var(--gold-glow);
@@ -58,8 +59,8 @@
     .map-grid {
       background-size: 40px 40px;
       background-image:
-        linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+        linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
       border-radius: 18px;
       position: relative;
       overflow: hidden;
@@ -75,7 +76,7 @@
     }
 
     .map-pin::after {
-      content: '';
+      content: "";
       position: absolute;
       inset: -18px;
       border: 1px solid var(--gold);
@@ -84,21 +85,24 @@
     }
 
     @keyframes pulse {
-      0% { opacity: .8; transform: scale(.2); }
+      0% { opacity: 0.8; transform: scale(0.2); }
       100% { opacity: 0; transform: scale(1); }
     }
 
     .footer-link {
       color: #888;
-      transition: color .3s;
+      transition: color 0.3s;
       display: block;
       margin-bottom: 12px;
     }
-    .footer-link:hover { color: var(--gold); }
+
+    .footer-link:hover {
+      color: var(--gold);
+    }
 
     .use-pill {
-      border: 1px solid rgba(212,175,55,0.35);
-      background: rgba(212,175,55,0.08);
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      background: rgba(212, 175, 55, 0.08);
       color: #f3deb0;
       padding: 10px 14px;
       border-radius: 999px;
@@ -108,11 +112,110 @@
 
     .social-icon-link {
       color: #a0a0a0;
-      transition: all .25s ease;
+      transition: all 0.25s ease;
     }
+
     .social-icon-link:hover {
       color: var(--gold);
       transform: translateY(-2px);
+    }
+
+    .preview-phone {
+      background: #0a0a0a;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 22px 55px rgba(0, 0, 0, 0.45);
+    }
+
+    .preview-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.55);
+    }
+
+    .preview-badge {
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      background: rgba(212, 175, 55, 0.08);
+      color: #f3deb0;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .faq-item {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 0 16px;
+    }
+
+    .faq-item summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 16px 0;
+      font-weight: 600;
+      color: #f6f6f6;
+      position: relative;
+      padding-right: 28px;
+    }
+
+    .faq-item summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-item summary::after {
+      content: "+";
+      position: absolute;
+      right: 0;
+      top: 14px;
+      color: var(--gold);
+      font-size: 1.2rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .faq-item[open] summary::after {
+      content: "-";
+    }
+
+    .faq-item p {
+      color: #a5a5a5;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      padding: 0 0 16px;
+      margin: 0;
+    }
+
+    .mobile-sticky-cta {
+      display: none;
+    }
+
+    @media (max-width: 767px) {
+      body {
+        padding-bottom: 84px;
+      }
+
+      .desktop-nav-cta {
+        display: none;
+      }
+
+      .mobile-sticky-cta {
+        display: block;
+        position: fixed;
+        left: 14px;
+        right: 14px;
+        bottom: 12px;
+        z-index: 80;
+        text-align: center;
+        border-radius: 999px;
+        padding: 14px 18px;
+        box-shadow: 0 0 22px var(--gold-glow);
+      }
     }
   </style>
 </head>
@@ -126,7 +229,7 @@
       <i class="fas fa-map-marked-alt text-[var(--gold)] text-xl"></i>
       <span class="text-xl font-bold text-white font-serif">Spotlight</span>
     </div>
-    <a href="/auth" class="btn-primary px-6 py-2 rounded-full text-sm">
+    <a href="/auth" class="btn-primary desktop-nav-cta px-6 py-2 rounded-full text-sm">
       Open the Map
     </a>
   </div>
@@ -138,12 +241,12 @@
 
   <div class="max-w-4xl z-10">
     <h1 class="text-5xl md:text-7xl font-bold leading-tight mb-6 text-white">
-      Don’t swipe.<br>
+      Don't swipe.<br>
       <span class="italic text-[var(--gold)]">Meet where you already are.</span>
     </h1>
 
     <p class="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto">
-      Spotlight shows real people nearby with real intent — coffee, dates, study, or just a vibe.
+      Spotlight shows real people nearby with clear intent - coffee, dates, study, networking, or just a vibe.
     </p>
 
     <div class="mt-10">
@@ -154,28 +257,49 @@
   </div>
 </section>
 
+<!-- TRUST STRIP -->
+<section class="px-6 pb-16 -mt-16 relative z-20">
+  <div class="max-w-6xl mx-auto glass-card p-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div>
+      <p class="text-[var(--gold)] text-xs font-bold tracking-widest mb-2">SAFETY</p>
+      <p class="text-sm text-gray-300">Reports go to admin review. Fast block and action tools are built in.</p>
+    </div>
+    <div>
+      <p class="text-[var(--gold)] text-xs font-bold tracking-widest mb-2">TRUST SCORE</p>
+      <p class="text-sm text-gray-300">Trust grows after real meetups and feedback from both sides.</p>
+    </div>
+    <div>
+      <p class="text-[var(--gold)] text-xs font-bold tracking-widest mb-2">ONE MATCH RULE</p>
+      <p class="text-sm text-gray-300">Only one active match at a time to keep conversations intentional.</p>
+    </div>
+    <div>
+      <p class="text-[var(--gold)] text-xs font-bold tracking-widest mb-2">TIME-LIMITED PRESENCE</p>
+      <p class="text-sm text-gray-300">You appear on the map only while you are live. You stay in control.</p>
+    </div>
+  </div>
+</section>
+
 <!-- EXPERIENCE -->
 <section class="py-24 px-6 bg-white/[0.02] border-y border-white/5">
   <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-
     <div>
       <span class="inline-block mb-4 px-4 py-1 rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 text-[var(--gold)] text-xs font-bold tracking-widest">
         LIVE SOCIAL MAP
       </span>
 
       <h2 class="text-4xl md:text-5xl font-bold mb-6">
-        Your social life,<br> placed in the real world.
+        Your social life,<br>placed in the real world.
       </h2>
 
       <p class="text-gray-400 text-lg mb-8">
-        No decks. No algorithms. Just a live map showing who’s nearby and open to meeting — right now.
+        No decks. No algorithms. Just a live map showing who is nearby and open to meeting right now.
       </p>
 
       <ul class="space-y-4 text-gray-300">
-        <li>📍 Proximity‑based discovery</li>
-        <li>⏳ Time‑limited presence</li>
-        <li>🤝 One match at a time</li>
-        <li>⭐ Trust built from real meetings</li>
+        <li class="flex items-center gap-3"><i class="fas fa-location-dot text-[var(--gold)]"></i> Proximity-based discovery</li>
+        <li class="flex items-center gap-3"><i class="fas fa-hourglass-half text-[var(--gold)]"></i> Time-limited presence</li>
+        <li class="flex items-center gap-3"><i class="fas fa-user-group text-[var(--gold)]"></i> One match at a time</li>
+        <li class="flex items-center gap-3"><i class="fas fa-shield-heart text-[var(--gold)]"></i> Trust built from real meetings</li>
       </ul>
     </div>
 
@@ -188,12 +312,60 @@
         <div class="map-pin" style="top:70%; left:30%"></div>
       </div>
     </div>
+  </div>
+</section>
 
+<!-- REAL UI PREVIEW -->
+<section class="py-20 px-6">
+  <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+    <div>
+      <span class="inline-block mb-4 px-4 py-1 rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 text-[var(--gold)] text-xs font-bold tracking-widest">
+        PRODUCT PREVIEW
+      </span>
+      <h2 class="text-4xl md:text-5xl font-bold mb-5">What the app feels like</h2>
+      <p class="text-gray-400 text-lg mb-6">
+        Open the map, go live, and request a meetup. You can check profiles, trust score, vibes, and feedback before you send a request.
+      </p>
+      <ul class="space-y-3 text-gray-300">
+        <li class="flex items-start gap-3"><i class="fas fa-circle-check text-[var(--gold)] mt-1"></i> Live map cards show place, intent, and distance.</li>
+        <li class="flex items-start gap-3"><i class="fas fa-circle-check text-[var(--gold)] mt-1"></i> Profile sheet includes bio, visual clue, and past feedback.</li>
+        <li class="flex items-start gap-3"><i class="fas fa-circle-check text-[var(--gold)] mt-1"></i> Match timeline helps both people stay in sync.</li>
+      </ul>
+    </div>
+
+    <div class="preview-phone">
+      <div class="preview-topbar">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full border border-[var(--gold)] flex items-center justify-center text-[var(--gold)]">
+            <i class="fas fa-user text-xs"></i>
+          </div>
+          <div class="preview-badge"><i class="fas fa-shield-halved mr-1"></i>Trust 104</div>
+        </div>
+        <div class="preview-badge">Live Nearby</div>
+      </div>
+      <div class="p-4">
+        <div class="map-grid h-64 bg-[#111] border border-white/10">
+          <div class="absolute top-[45%] left-[52%] w-4 h-4 bg-blue-500 rounded-full border-2 border-white -translate-x-1/2 -translate-y-1/2"></div>
+          <div class="map-pin" style="top:32%; left:66%"></div>
+          <div class="map-pin" style="top:63%; left:30%"></div>
+        </div>
+        <div class="mt-4 space-y-3">
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <p class="text-sm text-white font-semibold">Nina, 0.8 km</p>
+            <p class="text-xs text-gray-400 mt-1">At Midtown Cafe • Looking for a study partner</p>
+          </div>
+          <div class="rounded-xl border border-[var(--gold)]/30 bg-[var(--gold)]/10 p-3">
+            <p class="text-sm text-[#f3deb0] font-semibold">Request sent</p>
+            <p class="text-xs text-[#dfc57a] mt-1">Waiting for response</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
 <!-- USE CASES -->
-<section class="py-20 px-6">
+<section class="py-20 px-6 bg-white/[0.02] border-y border-white/5">
   <div class="max-w-6xl mx-auto">
     <div class="text-center mb-10">
       <span class="inline-block mb-3 px-4 py-1 rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 text-[var(--gold)] text-xs font-bold tracking-widest">
@@ -201,7 +373,7 @@
       </span>
       <h2 class="text-4xl md:text-5xl font-bold mb-3">Use Spotlight for real plans</h2>
       <p class="text-gray-400 max-w-2xl mx-auto">
-        Use it when you want to meet nearby people for a cafe, a movie, a walk, study sessions, or just good conversation.
+        Use it when you want to meet nearby people for a cafe, a movie, a walk, study sessions, or good conversation.
       </p>
     </div>
 
@@ -219,7 +391,7 @@
 </section>
 
 <!-- HOW IT WORKS -->
-<section class="py-20 px-6 bg-white/[0.02] border-y border-white/5">
+<section class="py-20 px-6">
   <div class="max-w-6xl mx-auto">
     <div class="text-center mb-12">
       <h2 class="text-4xl font-bold mb-3">How it works</h2>
@@ -245,6 +417,40 @@
   </div>
 </section>
 
+<!-- FAQ -->
+<section id="faq" class="py-20 px-6 bg-white/[0.02] border-y border-white/5">
+  <div class="max-w-4xl mx-auto">
+    <div class="text-center mb-10">
+      <span class="inline-block mb-3 px-4 py-1 rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 text-[var(--gold)] text-xs font-bold tracking-widest">
+        FAQ
+      </span>
+      <h2 class="text-4xl md:text-5xl font-bold mb-3">Before you go live</h2>
+    </div>
+
+    <div class="space-y-3">
+      <details class="faq-item">
+        <summary>Who can see my location?</summary>
+        <p>Only active users on Spotlight can see your live spot, and only while you are checked in. You can turn it off anytime from the map.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>How does trust score work?</summary>
+        <p>Trust score changes over time from post-meet feedback and behavior signals. It is meant to reward reliability and respectful interactions.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>What if someone behaves badly?</summary>
+        <p>You can report users directly from profile and match flows. Reports are reviewed by admin tools and action can include blocking and suspension.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>Can I match with multiple people at once?</summary>
+        <p>No. Spotlight allows one active match at a time to keep plans focused and reduce spam behavior.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
 <!-- FINAL CTA -->
 <section class="py-24 px-6 text-center">
   <div class="max-w-3xl mx-auto glass-card p-12">
@@ -256,11 +462,11 @@
     </p>
     <p class="text-gray-500 text-sm mb-8">
       Review our
-      <a href="/policy" class="text-[var(--gold)] hover:underline">Safety & Policy</a>
+      <a href="/policy" class="text-[var(--gold)] hover:underline">Safety and Policy</a>
       before meeting.
     </p>
-    <a href="/auth" class="btn-primary px-12 py-4 rounded-full text-lg">
-      Join Spotlight
+    <a href="/auth" class="btn-primary px-12 py-4 rounded-full text-lg inline-flex items-center gap-3">
+      Join Spotlight <i class="fas fa-location-arrow"></i>
     </a>
   </div>
 </section>
@@ -280,16 +486,16 @@
 
     <div>
       <h5 class="text-white font-bold mb-4">Product</h5>
-      <a href="/auth" class="footer-link">How it Works</a>
-      <a href="/policy" class="footer-link">Safety & Policy</a>
-      <a class="footer-link">Trust Score</a>
+      <a href="/auth" class="footer-link">Open the Map</a>
+      <a href="/policy" class="footer-link">Safety and Policy</a>
+      <a href="#faq" class="footer-link">FAQ</a>
     </div>
 
     <div>
-      <h5 class="text-white font-bold mb-4">Company</h5>
-      <a class="footer-link">About</a>
-      <a class="footer-link">Careers</a>
-      <a class="footer-link">Contact</a>
+      <h5 class="text-white font-bold mb-4">Support</h5>
+      <a href="mailto:support@spotlight.app" class="footer-link">support@spotlight.app</a>
+      <a href="/auth" class="footer-link">Report from App</a>
+      <p class="text-gray-500 text-sm">Response hours: 10:00 - 19:00 IST</p>
     </div>
 
     <div>
@@ -309,9 +515,13 @@
   </div>
 
   <div class="text-center text-xs text-gray-600 border-t border-white/5 pt-6">
-    © 2026 Spotlight. Built for real connections.
+    &copy; 2026 Spotlight. Built for real connections.
   </div>
 </footer>
+
+<a href="/auth" class="mobile-sticky-cta btn-primary">
+  Open Spotlight Map
+</a>
 
 </body>
 </html>

@@ -249,6 +249,43 @@ def init_db():
     c.execute("CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(type)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_user_id)")
 
+    # --------------------------------------------------
+    # PUSH SUBSCRIPTIONS (browser push tokens)
+    # --------------------------------------------------
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            endpoint TEXT NOT NULL UNIQUE,
+            p256dh TEXT NOT NULL,
+            auth TEXT NOT NULL,
+            user_agent TEXT,
+            created_at REAL,
+            updated_at REAL,
+            last_sent_at REAL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    """)
+    c.execute("CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id)")
+
+    # --------------------------------------------------
+    # APP NOTIFICATIONS (in-app inbox fallback)
+    # --------------------------------------------------
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS app_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            kind TEXT DEFAULT 'admin_push',
+            created_at REAL,
+            seen_at REAL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    """)
+    c.execute("CREATE INDEX IF NOT EXISTS idx_app_notifications_user_seen ON app_notifications(user_id, seen_at)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_app_notifications_created ON app_notifications(created_at)")
+
     conn.commit()
     conn.close()
 
