@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    content="width=device-width, initial-scale=1.0"
   >
   <title>Spotlight</title>
 
@@ -26,19 +26,29 @@
   <div id="app-shell">
     <!-- HEADER -->
     <header class="app-topbar">
-      <div class="user-avatar" onclick="goToSettings()" title="{{ user.username }}">
-        <img src="{{ user.avatar_url }}" alt="{{ user.username }}">
-      </div>
+      <div class="topbar-leading">
+        <div class="user-avatar" onclick="goToSettings()" title="{{ user.username }}">
+          <img src="{{ user.avatar_url }}" alt="{{ user.username }}">
+        </div>
 
-      <div class="trust-score-pill">
-        <i class="fas fa-shield-halved"></i>
-        <span id="my-trust-score">--</span>
+        <div class="trust-score-pill">
+          <i class="fas fa-shield-halved"></i>
+          <span id="my-trust-score">--</span>
+        </div>
       </div>
 
       <div class="spacer"></div>
 
-      <button class="text-btn" onclick="fetchMyFeedback()">My Feedback</button>
-      <button class="text-btn" onclick="reportApp()">Report App</button>
+      <div class="topbar-actions">
+        <button class="text-btn" onclick="fetchMyFeedback()" aria-label="Open my feedback">
+          <i class="fas fa-comment-dots"></i>
+          <span>My Feedback</span>
+        </button>
+        <button class="text-btn" onclick="reportApp()" aria-label="Report app issue">
+          <i class="fas fa-flag"></i>
+          <span>Report App</span>
+        </button>
+      </div>
 
       <div class="bell-wrapper">
         <div class="bell-icon" id="bellIcon" onclick="toggleBellBox()">
@@ -282,9 +292,7 @@
       <h2>⭐ Rate Your Match ⭐</h2>
       <p id="feedback-username"></p>
       <div id="rating-box"></div>
-      <textarea id="feedback-text"
-        placeholder="Write up to 50 words"
-        style="width:90%;max-width:400px;height:80px;"></textarea>
+      <textarea id="feedback-text" placeholder="Write up to 50 words"></textarea>
       <div class="action-row">
         <button onclick="submitFeedback()" class="primary-btn">Submit</button>
       </div>
