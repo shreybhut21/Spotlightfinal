@@ -102,11 +102,11 @@
         <p class="subtitle">Visible to active users</p>
 
         <div class="input-group">
-          <input id="place" placeholder="Where are you? (Starbucks, Library)">
+          <input id="place" placeholder="Where To Met? (Cafe,Garden )">
         </div>
 
         <div class="input-group">
-          <input id="intent" placeholder="Why are you here? (Coffee, Study)">
+          <input id="intent" placeholder="Purpose of Meetup? (Coffee, Movie)">
         </div>
 
         <div class="input-group">
@@ -295,6 +295,17 @@
       <textarea id="feedback-text" placeholder="Write up to 50 words"></textarea>
       <div class="action-row">
         <button onclick="submitFeedback()" class="primary-btn">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="admin-ban-modal" class="admin-ban-modal hidden" role="dialog" aria-modal="true" aria-labelledby="admin-ban-title">
+    <div class="admin-ban-card">
+      <div class="admin-ban-icon"><i class="fas fa-user-shield"></i></div>
+      <h3 id="admin-ban-title">Account Restricted</h3>
+      <p id="admin-ban-message">You were banned by admins. Contact support if this is a mistake.</p>
+      <div class="action-row">
+        <button class="primary-btn" onclick="closeAdminBanNotice()">OK</button>
       </div>
     </div>
   </div>

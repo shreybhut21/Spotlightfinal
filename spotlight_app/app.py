@@ -3,7 +3,7 @@ import os
 import logging
 import re
 import json
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 import csv
 import io
@@ -98,6 +98,10 @@ def _is_profile_complete(user) -> bool:
         value = user[field] if field in user.keys() else None
         if not str(value or "").strip():
             return False
+    avatar_value = user["avatar_url"] if "avatar_url" in user.keys() else ""
+    gender_value = user["gender"] if "gender" in user.keys() else None
+    if not _is_allowed_avatar_for_gender(avatar_value, gender_value):
+        return False
     return True
 
 
@@ -118,6 +122,70 @@ PROFILE_VIBE_OPTIONS = [
     ("Networking", "Networking"),
 ]
 PROFILE_VIBE_ALLOWED = {value for value, _ in PROFILE_VIBE_OPTIONS}
+PROFILE_IMAGE_DIR = os.path.join(os.path.dirname(__file__), "profileimg")
+PROFILE_IMAGE_FILENAMES = {f"{i}.png" for i in range(1, 21)}
+PROFILE_AVATAR_PRESETS = [
+    {
+        "id": f"boy_{i}",
+        "label": f"Boy {i}",
+        "group": "boy",
+        "url": f"/profileimg/{i}.png",
+    }
+    for i in range(1, 11)
+] + [
+    {
+        "id": f"girl_{i - 10}",
+        "label": f"Girl {i - 10}",
+        "group": "girl",
+        "url": f"/profileimg/{i}.png",
+    }
+    for i in range(11, 21)
+]
+PROFILE_AVATAR_ALLOWED = {item["url"] for item in PROFILE_AVATAR_PRESETS}
+DEFAULT_PROFILE_AVATAR_URL = PROFILE_AVATAR_PRESETS[0]["url"]
+
+
+def _avatar_group_for_gender(gender_value):
+    normalized = str(gender_value or "").strip().lower()
+    if normalized == "male":
+        return "boy"
+    if normalized == "female":
+        return "girl"
+    return None
+
+
+def _avatar_options_for_gender(gender_value):
+    group = _avatar_group_for_gender(gender_value)
+    if not group:
+        return PROFILE_AVATAR_PRESETS
+    return [item for item in PROFILE_AVATAR_PRESETS if item["group"] == group]
+
+
+def _allowed_avatar_urls_for_gender(gender_value):
+    return {item["url"] for item in _avatar_options_for_gender(gender_value)}
+
+
+def _default_avatar_for_gender(gender_value):
+    options = _avatar_options_for_gender(gender_value)
+    if options:
+        return options[0]["url"]
+    return DEFAULT_PROFILE_AVATAR_URL
+
+
+def _is_allowed_avatar(value) -> bool:
+    return str(value or "").strip() in PROFILE_AVATAR_ALLOWED
+
+
+def _is_allowed_avatar_for_gender(value, gender_value) -> bool:
+    avatar_url = str(value or "").strip()
+    return avatar_url in _allowed_avatar_urls_for_gender(gender_value)
+
+
+def _sanitize_avatar_url(value, gender_value=None) -> str:
+    avatar_url = str(value or "").strip()
+    if _is_allowed_avatar_for_gender(avatar_url, gender_value):
+        return avatar_url
+    return _default_avatar_for_gender(gender_value)
 
 
 def _expire_stale_pending_requests(conn) -> None:
@@ -143,6 +211,65 @@ def _push_ready() -> bool:
     cfg = _push_config()
     return bool(webpush and cfg["public_key"] and cfg["private_key"])
 
+
+ACCOUNT_BLOCKED_ERROR = "You were banned by admins. Contact support if this is a mistake."
+
+
+@app.before_request
+def enforce_active_user_session():
+    """
+    If a logged-in account is blocked, prevent access to member pages/APIs.
+    Public auth/admin/static routes remain reachable.
+    """
+    uid = session.get("user_id")
+    if not uid:
+        return None
+
+    path = request.path or "/"
+    public_paths = {
+        "/",
+        "/auth",
+        "/auth/google",
+        "/auth/google/callback",
+        "/login",
+        "/signup",
+        "/logout",
+        "/policy",
+        "/sw.js",
+    }
+    if (
+        path in public_paths
+        or path.startswith("/static/")
+        or path.startswith("/profileimg/")
+        or path.startswith("/admin")
+    ):
+        return None
+
+    conn = db.get_db_connection()
+    user_row = conn.execute(
+        "SELECT id, is_active FROM users WHERE id=?",
+        (uid,),
+    ).fetchone()
+
+    if not user_row:
+        session.clear()
+        if path.startswith("/api/"):
+            return jsonify({"error": "unauthorized"}), 401
+        return redirect(url_for("auth"))
+
+    if int(user_row["is_active"] or 0) == 1:
+        return None
+
+    if path.startswith("/api/"):
+        return jsonify(
+            {
+                "error": "account_blocked",
+                "message": ACCOUNT_BLOCKED_ERROR,
+            }
+        ), 403
+    session.clear()
+    return render_template("auth.html", error=ACCOUNT_BLOCKED_ERROR)
+
 # ======================================================
 # AUTH / PAGES
 # ======================================================
@@ -158,6 +285,15 @@ def policy():
 @app.route("/sw.js")
 def service_worker():
     return send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
+
+
+@app.route("/profileimg/<path:filename>")
+def profile_image(filename):
+    safe_name = (filename or "").strip()
+    if safe_name not in PROFILE_IMAGE_FILENAMES:
+        abort(404)
+    return send_from_directory(PROFILE_IMAGE_DIR, safe_name)
+
 
 @app.route("/auth")
 def auth():
@@ -192,14 +328,13 @@ def auth_google_callback():
     email = email.strip().lower()
 
     preferred_name = (userinfo or {}).get("name") or email.split("@")[0]
-    avatar_url = (userinfo or {}).get("picture")
-
     conn = db.get_db_connection()
     user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
 
     if not user:
         username = _build_unique_username(conn, preferred_name)
         pwd_hash = generate_password_hash(os.urandom(16).hex())
+        avatar_url = DEFAULT_PROFILE_AVATAR_URL
         conn.execute(
             """
             INSERT INTO users
@@ -222,10 +357,17 @@ def auth_google_callback():
         )
         conn.commit()
         user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
-    elif avatar_url and avatar_url != user["avatar_url"]:
-        conn.execute("UPDATE users SET avatar_url=? WHERE id=?", (avatar_url, user["id"]))
+    elif not _is_allowed_avatar_for_gender(user["avatar_url"], user["gender"]):
+        conn.execute(
+            "UPDATE users SET avatar_url=? WHERE id=?",
+            (_default_avatar_for_gender(user["gender"]), user["id"]),
+        )
         conn.commit()
         user = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
+
+    if int(user["is_active"] or 0) != 1:
+        session.clear()
+        return render_template("auth.html", error=ACCOUNT_BLOCKED_ERROR)
 
     session["user_id"] = user["id"]
     if not _is_profile_complete(user):
@@ -249,13 +391,22 @@ def complete_profile():
 
     def render_profile(error=None, selected_vibes=None, form_data=None):
         selected = selected_vibes if selected_vibes is not None else [v for v in (user["vibe_tags"] or "").split(",") if v]
+        current_gender = ((form_data or {}).get("gender") if form_data else user["gender"]) or ""
+        avatar_options = _avatar_options_for_gender(current_gender)
+        selected_avatar_url = _sanitize_avatar_url(
+            (form_data or {}).get("avatar_url") if form_data else user["avatar_url"],
+            current_gender,
+        )
         data = form_data or {
             "username": user["username"] or "",
             "gender": user["gender"] or "",
             "dob": user["dob"] or "",
             "phone": user["phone"] or "",
             "bio": user["bio"] or "",
+            "avatar_url": selected_avatar_url,
         }
+        if "avatar_url" not in data:
+            data["avatar_url"] = selected_avatar_url
         return render_template(
             "complete_profile.html",
             user=user,
@@ -264,6 +415,8 @@ def complete_profile():
             error=error,
             max_vibes=MAX_PROFILE_VIBES,
             vibe_options=PROFILE_VIBE_OPTIONS,
+            avatar_options=avatar_options,
+            selected_avatar_url=selected_avatar_url,
         )
 
     if request.method == "POST":
@@ -272,6 +425,7 @@ def complete_profile():
         dob = (request.form.get("dob") or "").strip()
         bio = (request.form.get("bio") or "").strip()
         phone = (request.form.get("phone") or "").strip()
+        avatar_url = (request.form.get("avatar_url") or "").strip()
         vibes = [v for v in request.form.getlist("vibes") if v in PROFILE_VIBE_ALLOWED]
         vibes = list(dict.fromkeys(vibes))
         vibe_tags = ",".join(vibes)
@@ -281,6 +435,7 @@ def complete_profile():
             "dob": dob,
             "phone": phone,
             "bio": bio,
+            "avatar_url": avatar_url,
         }
 
         if not username:
@@ -293,6 +448,8 @@ def complete_profile():
             return render_profile("Enter a valid phone number.", selected_vibes=vibes, form_data=form_data)
         if len(bio) > 280:
             return render_profile("Bio must be 280 characters or less.", selected_vibes=vibes, form_data=form_data)
+        if not _is_allowed_avatar_for_gender(avatar_url, gender):
+            return render_profile("Select a profile avatar for your gender.", selected_vibes=vibes, form_data=form_data)
         if len(vibes) > MAX_PROFILE_VIBES:
             return render_profile(f"Choose up to {MAX_PROFILE_VIBES} vibes.", selected_vibes=vibes, form_data=form_data)
         if not vibe_tags:
@@ -318,10 +475,10 @@ def complete_profile():
         conn.execute(
             """
             UPDATE users
-            SET username=?, gender=?, dob=?, bio=?, vibe_tags=?, phone=?
+            SET username=?, gender=?, dob=?, bio=?, vibe_tags=?, phone=?, avatar_url=?
             WHERE id=?
             """,
-            (username, gender, dob, bio, vibe_tags, phone, user["id"]),
+            (username, gender, dob, bio, vibe_tags, phone, avatar_url, user["id"]),
         )
         conn.commit()
         session.pop("needs_profile_completion", None)
@@ -364,6 +521,10 @@ def login():
     # guard against missing password hashes or empty input
     if not user:
         return render_template("auth.html", error="Username not found.")
+
+    if int(user["is_active"] or 0) != 1:
+        session.clear()
+        return render_template("auth.html", error=ACCOUNT_BLOCKED_ERROR)
 
     # allow legacy accounts with null/empty hash to continue (no-password fallback)
     if not user["password_hash"]:
@@ -419,8 +580,8 @@ def signup():
     conn.execute("""
         INSERT INTO users
         (username, email, password_hash, gender, dob, bio, vibe_tags, phone,
-         trust_score, is_matched, matched_with, is_active, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 100, 0, NULL, 1, ?)
+         trust_score, is_matched, matched_with, is_active, avatar_url, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 100, 0, NULL, 1, ?, ?)
     """, (
         username,
         email,
@@ -430,6 +591,7 @@ def signup():
         "",
         "",
         phone,
+        DEFAULT_PROFILE_AVATAR_URL,
         time.time()
     ))
 
@@ -475,6 +637,8 @@ def settings():
         user=user,
         age=age,
         vibes=vibes,
+        avatar_options=_avatar_options_for_gender(user["gender"]),
+        selected_avatar_url=_sanitize_avatar_url(user["avatar_url"], user["gender"]),
         max_vibes=MAX_PROFILE_VIBES,
         vibe_options=PROFILE_VIBE_OPTIONS,
     )
@@ -695,6 +859,10 @@ def admin_toggle_user():
         return jsonify({"error": "invalid_user"}), 400
 
     conn = db.get_db_connection()
+    target = conn.execute("SELECT id FROM users WHERE id=?", (target_id,)).fetchone()
+    if not target:
+        return jsonify({"error": "not_found"}), 404
+
     is_active = 0 if action == "block" else 1
     conn.execute("UPDATE users SET is_active=? WHERE id=?", (is_active, target_id))
     if action == "block":
@@ -702,7 +870,7 @@ def admin_toggle_user():
         conn.execute("DELETE FROM spotlights WHERE user_id=?", (target_id,))
     conn.commit()
 
-    return jsonify({"status": "ok", "is_active": is_active})
+    return jsonify({"status": "ok", "target_id": target_id, "is_active": is_active})
 
 
 @app.route("/admin/delete_user", methods=["POST"])
@@ -1018,13 +1186,16 @@ def index_html():
         if user and not _is_profile_complete(user):
             session["needs_profile_completion"] = True
             return redirect(url_for("complete_profile"))
+        if user:
+            user = dict(user)
+            user["avatar_url"] = _sanitize_avatar_url(user.get("avatar_url"), user.get("gender"))
 
     # fallback guest user so template has fields
     if not user:
         user = {
             "id": None,
             "username": "Guest",
-            "avatar_url": "https://ui-avatars.com/api/?name=G",
+            "avatar_url": DEFAULT_PROFILE_AVATAR_URL,
             "trust_score": None,
         }
 
@@ -1788,7 +1959,7 @@ def nearby():
     conn = db.get_db_connection()
     rows = conn.execute(
         """
-        SELECT s.*, u.username, u.trust_score, u.bio, u.vibe_tags
+        SELECT s.*, u.username, u.trust_score, u.bio, u.vibe_tags, u.avatar_url, u.gender
         FROM spotlights s
         JOIN users u ON u.id = s.user_id
         WHERE s.expiry > ?
@@ -1808,6 +1979,7 @@ def nearby():
             "trust_score": r["trust_score"],
             "bio": (r["bio"] or "")[:280],
             "vibe_tags": r["vibe_tags"],
+            "avatar_url": _sanitize_avatar_url(r["avatar_url"], r["gender"]),
             "place": r["place"],
             "intent": r["intent"],
             "meet_time": r["meet_time"],
@@ -1839,17 +2011,32 @@ def update_profile():
     if len(vibes) > MAX_PROFILE_VIBES:
         return jsonify({"error": "too_many_vibes", "max_vibes": MAX_PROFILE_VIBES}), 400
 
-    vibe_tags = ",".join(vibes)
     conn = db.get_db_connection()
+    row = conn.execute(
+        "SELECT avatar_url, gender FROM users WHERE id=?",
+        (session["user_id"],),
+    ).fetchone()
+    gender_value = row["gender"] if row else None
+
+    avatar_url = (data.get("avatar_url") or "").strip()
+    if not avatar_url:
+        avatar_url = (row["avatar_url"] if row else "") or ""
+        avatar_url = str(avatar_url).strip()
+
+    if not _is_allowed_avatar_for_gender(avatar_url, gender_value):
+        return jsonify({"error": "invalid_avatar"}), 400
+
+    vibe_tags = ",".join(vibes)
     conn.execute(
-        "UPDATE users SET vibe_tags=? WHERE id=?",
-        (vibe_tags, session["user_id"]),
+        "UPDATE users SET vibe_tags=?, avatar_url=? WHERE id=?",
+        (vibe_tags, avatar_url, session["user_id"]),
     )
     conn.commit()
 
     return jsonify({
         "status": "saved",
         "vibes": vibes,
+        "avatar_url": avatar_url,
     })
 
 

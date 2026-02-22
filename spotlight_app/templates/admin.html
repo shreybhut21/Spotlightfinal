@@ -275,22 +275,35 @@
     });
 
     async function toggleUser(id, currentlyActive) {
-      const action = currentlyActive ? 'block' : 'unblock';
-      const res = await fetch('/admin/toggle_user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_id: id, action })
-      });
-      if (!res.ok) { alert('Action failed'); return; }
       const row = document.querySelector(`tr[data-user="${id}"]`);
-      if (row) {
-        const statusEl = row.querySelector('.status');
-        const toggleBtn = row.querySelector('.toggle-user-btn');
-        if (statusEl) statusEl.innerText = action === 'block' ? 'Blocked' : 'Active';
-        if (toggleBtn) {
-          toggleBtn.innerText = action === 'block' ? 'Unblock' : 'Block';
-          toggleBtn.setAttribute('onclick', `toggleUser(${id}, ${action === 'block' ? 0 : 1})`);
+      const statusEl = row ? row.querySelector('.status') : null;
+      const toggleBtn = row ? row.querySelector('.toggle-user-btn') : null;
+      const isActiveNow = Number(currentlyActive) === 1;
+      const action = isActiveNow ? 'block' : 'unblock';
+
+      if (toggleBtn) toggleBtn.disabled = true;
+      try {
+        const res = await fetch('/admin/toggle_user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_id: id, action })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          alert(data.error ? `Action failed: ${data.error}` : 'Action failed');
+          return;
         }
+
+        const nextIsActive = Number(data.is_active) === 1 ? 1 : 0;
+        if (statusEl) statusEl.innerText = nextIsActive ? 'Active' : 'Blocked';
+        if (toggleBtn) {
+          toggleBtn.innerText = nextIsActive ? 'Block' : 'Unblock';
+          toggleBtn.setAttribute('onclick', `toggleUser(${id}, ${nextIsActive})`);
+        }
+      } catch (_) {
+        alert('Action failed');
+      } finally {
+        if (toggleBtn) toggleBtn.disabled = false;
       }
     }
 

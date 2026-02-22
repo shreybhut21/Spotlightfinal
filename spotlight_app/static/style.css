@@ -333,6 +333,14 @@ html, body {
   box-shadow: 0 0 8px var(--gold-glow);
 }
 
+.nearby-card .card-avatar .avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
 .nearby-card .card-name { font-size: 13px; font-weight: 700; }
 .nearby-card .card-score { font-size: 11px; color: var(--gold); }
 .nearby-card .card-info {
@@ -464,6 +472,14 @@ html, body {
   font-weight: 800;
   color: var(--gold);
   font-size: 20px;
+}
+
+.avatar-ring .avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 .trust-badge { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--gold); }
@@ -812,6 +828,59 @@ html, body {
   margin-top: 8px;
   color: #ff8080;
   font-size: 13px;
+}
+
+.admin-ban-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2300;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(9px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.admin-ban-card {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(36,20,20,0.95), rgba(22,14,14,0.98));
+  border: 1px solid rgba(248,113,113,0.45);
+  border-radius: 20px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  padding: 22px 20px 18px;
+}
+
+.admin-ban-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(248,113,113,0.16);
+  border: 1px solid rgba(248,113,113,0.35);
+  color: #fca5a5;
+  font-size: 20px;
+}
+
+.admin-ban-card h3 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  letter-spacing: 0.01em;
+}
+
+.admin-ban-card p {
+  margin: 0;
+  color: #f5d2d2;
+  line-height: 1.45;
+}
+
+.admin-ban-card .action-row {
+  justify-content: center;
+  margin-top: 16px;
 }
 
 /* Feedback overlay */

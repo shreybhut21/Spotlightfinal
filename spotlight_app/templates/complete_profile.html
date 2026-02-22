@@ -183,6 +183,149 @@
       gap: 8px;
     }
 
+    .avatar-control {
+      margin-bottom: 6px;
+    }
+
+    .avatar-row {
+      width: 98px;
+      height: 98px;
+      margin: 8px auto 6px;
+      position: relative;
+    }
+
+    .avatar-preview-btn {
+      width: 98px;
+      height: 98px;
+      border-radius: 50%;
+      border: 2px solid rgba(212, 175, 55, 0.55);
+      padding: 0;
+      background: #111;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .avatar-preview-btn img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .avatar-edit-btn {
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid rgba(212, 175, 55, 0.55);
+      background: #1f1a0e;
+      color: #f2dfa6;
+      font-size: 17px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    }
+
+    .avatar-picker-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.68);
+      backdrop-filter: blur(2px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .avatar-picker-box {
+      width: min(420px, 100%);
+      max-height: 82vh;
+      overflow: auto;
+      background: #141414;
+      border: 1px solid #383838;
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+    }
+
+    .avatar-picker-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+
+    .avatar-picker-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f1f1f1;
+    }
+
+    .avatar-picker-close {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 1px solid #444;
+      background: #1d1d1d;
+      color: #d2d2d2;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .avatar-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .avatar-option input {
+      display: none;
+    }
+
+    .avatar-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 7px 5px;
+      background: rgba(255, 255, 255, 0.03);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .avatar-tile:hover {
+      border-color: rgba(212, 175, 55, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .avatar-tile img {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.03);
+      object-fit: cover;
+    }
+
+    .avatar-option input:checked + .avatar-tile {
+      border-color: var(--gold);
+      background: rgba(212, 175, 55, 0.12);
+      box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.16);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
     .vibes input {
       display: none;
     }
@@ -250,6 +393,10 @@
       .grid {
         grid-template-columns: 1fr;
       }
+
+      .avatar-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
     }
   </style>
 </head>
@@ -307,6 +454,18 @@
         <p class="helper">Use digits, spaces, and dashes. Country code is optional.</p>
       </div>
 
+      <div class="field full avatar-control">
+        <label>Choose Avatar</label>
+        <div class="avatar-row">
+          <button type="button" class="avatar-preview-btn" onclick="openAvatarPicker()" aria-label="Change profile image">
+            <img id="avatarPreview" src="{{ fd.get('avatar_url', selected_avatar_url) }}" alt="Selected avatar">
+          </button>
+          <button type="button" class="avatar-edit-btn" onclick="openAvatarPicker()" aria-label="Edit profile image">&#9998;</button>
+        </div>
+        <input id="avatarSelectedInput" type="hidden" name="avatar_url" value="{{ fd.get('avatar_url', selected_avatar_url) }}">
+        <p id="avatarHint" class="helper">Tap the pencil icon to choose your profile picture.</p>
+      </div>
+
       <div class="field full">
         <div class="vibes-top">
           <label style="margin:0;" for="vibes-wrap">Your Vibes</label>
@@ -336,6 +495,28 @@
     <button class="btn" type="submit">Save and Continue</button>
   </form>
 
+  <div id="avatarPickerModal" class="avatar-picker-overlay hidden" onclick="handleAvatarOverlayClick(event)">
+    <div class="avatar-picker-box" role="dialog" aria-modal="true" aria-labelledby="avatarPickerTitle">
+      <div class="avatar-picker-head">
+        <div id="avatarPickerTitle" class="avatar-picker-title">Choose Profile Picture</div>
+        <button type="button" class="avatar-picker-close" onclick="closeAvatarPicker()" aria-label="Close picker">&times;</button>
+      </div>
+
+      <div class="avatar-grid">
+        {% for avatar in avatar_options %}
+          {% set aid = "complete_avatar_" ~ loop.index %}
+          {% set selected_avatar = fd.get('avatar_url', selected_avatar_url) %}
+          <label class="avatar-option" data-group="{{ avatar.group }}" for="{{ aid }}" onclick="selectAvatar('{{ avatar.url }}'); return false;">
+            <input id="{{ aid }}" type="radio" name="avatar_pick" value="{{ avatar.url }}" {{ selected_avatar == avatar.url and 'checked' or '' }}>
+            <span class="avatar-tile">
+              <img src="{{ avatar.url }}" alt="Profile avatar {{ loop.index }}">
+            </span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
   <script>
     const form = document.getElementById("profileForm");
     const usernameInput = document.getElementById("username");
@@ -343,6 +524,13 @@
     const bioInput = document.getElementById("bio");
     const bioCount = document.getElementById("bioCount");
     const vibeBoxes = Array.from(document.querySelectorAll('input[name="vibes"]'));
+    const avatarBoxes = Array.from(document.querySelectorAll('input[name="avatar_pick"]'));
+    const avatarOptions = Array.from(document.querySelectorAll(".avatar-option[data-group]"));
+    const avatarSelectedInput = document.getElementById("avatarSelectedInput");
+    const avatarPreview = document.getElementById("avatarPreview");
+    const avatarHint = document.getElementById("avatarHint");
+    const avatarPickerModal = document.getElementById("avatarPickerModal");
+    const genderSelect = document.getElementById("gender");
     const vibeCount = document.getElementById("vibeCount");
     const vibeHint = document.getElementById("vibeHint");
 
@@ -367,6 +555,86 @@
     function selectedVibeCount() {
       return vibeBoxes.filter((v) => v.checked).length;
     }
+
+    function getSelectedAvatar() {
+      return (avatarSelectedInput?.value || "").trim();
+    }
+
+    function avatarGroupForGender(value) {
+      const normalized = String(value || "").trim().toLowerCase();
+      if (normalized === "male") return "boy";
+      if (normalized === "female") return "girl";
+      return "";
+    }
+
+    function setAvatarByUrl(url) {
+      if (!url) return;
+      avatarBoxes.forEach((box) => { box.checked = false; });
+      const target = avatarBoxes.find((box) => box.value === url);
+      if (!target) return;
+      target.checked = true;
+      if (avatarSelectedInput) avatarSelectedInput.value = url;
+      if (avatarPreview) avatarPreview.src = url;
+    }
+
+    function applyAvatarGenderFilter() {
+      const group = avatarGroupForGender(genderSelect ? genderSelect.value : "");
+      let firstVisibleUrl = "";
+
+      avatarOptions.forEach((option) => {
+        const optionGroup = option.getAttribute("data-group") || "";
+        const visible = !!group && optionGroup === group;
+        option.style.display = visible ? "" : "none";
+        if (visible && !firstVisibleUrl) {
+          const input = option.querySelector('input[name="avatar_pick"]');
+          if (input) firstVisibleUrl = input.value;
+        }
+      });
+
+      if (!group) {
+        avatarBoxes.forEach((box) => { box.checked = false; });
+        if (avatarSelectedInput) avatarSelectedInput.value = "";
+        setHelperState(avatarHint, "Select gender first, then choose your avatar.", "");
+        return;
+      }
+
+      const selectedUrl = getSelectedAvatar();
+      const selectedInput = avatarBoxes.find((box) => box.value === selectedUrl);
+      const selectedGroup = selectedInput ? (selectedInput.closest(".avatar-option")?.getAttribute("data-group") || "") : "";
+      if (selectedGroup && selectedGroup !== group && firstVisibleUrl) {
+        setAvatarByUrl(firstVisibleUrl);
+      }
+    }
+
+    window.selectAvatar = function (url) {
+      setAvatarByUrl(url);
+      setHelperState(avatarHint, "Avatar selected.", "ok");
+      closeAvatarPicker();
+    };
+
+    window.openAvatarPicker = function () {
+      const group = avatarGroupForGender(genderSelect ? genderSelect.value : "");
+      if (!group) {
+        setHelperState(avatarHint, "Select gender first, then choose your avatar.", "error");
+        return;
+      }
+      applyAvatarGenderFilter();
+      if (!avatarPickerModal) return;
+      avatarPickerModal.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+    };
+
+    window.closeAvatarPicker = function () {
+      if (!avatarPickerModal) return;
+      avatarPickerModal.classList.add("hidden");
+      document.body.style.overflow = "";
+    };
+
+    window.handleAvatarOverlayClick = function (event) {
+      if (event.target === avatarPickerModal) {
+        closeAvatarPicker();
+      }
+    };
 
     function updateVibeUI(lastChanged = null) {
       let count = selectedVibeCount();
@@ -441,12 +709,29 @@
     vibeBoxes.forEach((box) => {
       box.addEventListener("change", (event) => updateVibeUI(event.target));
     });
+    avatarBoxes.forEach((box) => {
+      box.addEventListener("change", () => {
+        if (!box.checked) return;
+        if (avatarPreview) avatarPreview.src = box.value;
+        setHelperState(avatarHint, "Avatar selected.", "ok");
+        closeAvatarPicker();
+      });
+    });
 
     bioInput.addEventListener("input", updateBioCount);
+    if (genderSelect) {
+      genderSelect.addEventListener("change", () => {
+        applyAvatarGenderFilter();
+      });
+    }
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       updateVibeUI();
+      if (!getSelectedAvatar()) {
+        setHelperState(avatarHint, "Select a profile avatar.", "error");
+        return;
+      }
 
       const count = selectedVibeCount();
       if (count < 1) {
@@ -468,7 +753,15 @@
 
     updateBioCount();
     updateVibeUI();
+    setAvatarByUrl("{{ fd.get('avatar_url', selected_avatar_url) }}");
+    applyAvatarGenderFilter();
     checkUsernameAvailability(false);
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && avatarPickerModal && !avatarPickerModal.classList.contains("hidden")) {
+        closeAvatarPicker();
+      }
+    });
   </script>
 </body>
 </html>

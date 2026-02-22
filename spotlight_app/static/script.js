@@ -412,6 +412,14 @@ function escapeHtml(text) {
     .replace(/'/g, "&#39;");
 }
 
+function avatarMarkup(user, size = "small") {
+  const initial = escapeHtml(user?.username?.[0] || "?");
+  const avatarUrl = String(user?.avatar_url || "").trim();
+  if (!avatarUrl) return initial;
+  const cls = size === "large" ? "avatar-img large" : "avatar-img";
+  return `<img class="${cls}" src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(user?.username || "User")}">`;
+}
+
 async function loadProfileFeedback(userId) {
   activeFeedbackProfileUserId = userId;
   const feedbackGroup = document.getElementById("p-feedback-group");
@@ -464,7 +472,8 @@ async function loadProfileFeedback(userId) {
 // ==========================
 function openProfile(user) {
   selectedUserId = user.id;
-  document.getElementById("p-avatar").innerText = user.username?.[0] || "?";
+  const avatarEl = document.getElementById("p-avatar");
+  if (avatarEl) avatarEl.innerHTML = avatarMarkup(user, "large");
   document.getElementById("p-username").innerText = user.username;
   document.getElementById("p-score").innerText = user.trust_score ?? "--";
   const meeting = formatMeetingDateTime(user.meet_time);
@@ -507,11 +516,24 @@ function openProfile(user) {
 async function sendRequest() {
   if (!selectedUserId) return;
 
-  await fetch("/api/send_request", {
+  const res = await fetch("/api/send_request", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ receiver_id: selectedUserId })
   });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    if (payload.error === "account_blocked") {
+      showAdminBanNotice(payload.message);
+      return;
+    }
+    if (res.status === 401) {
+      alert("Please sign in again.");
+      return;
+    }
+    alert("Unable to send request");
+    return;
+  }
 
   startMatchPoller();
   closeAllSheets();
@@ -1021,6 +1043,28 @@ function openSheet(id) {
   setTimeout(() => document.getElementById(id).classList.add("active"), 10);
 }
 
+function showAdminBanNotice(message) {
+  const modal = document.getElementById("admin-ban-modal");
+  const body = document.getElementById("admin-ban-message");
+  const finalMessage = (message || "You were banned by admins. Contact support if this is a mistake.").trim();
+
+  if (body) body.innerText = finalMessage;
+  if (!modal) {
+    alert(finalMessage);
+    window.location.href = "/logout";
+    return;
+  }
+
+  closeAllSheets();
+  modal.classList.remove("hidden");
+}
+
+function closeAdminBanNotice() {
+  const modal = document.getElementById("admin-ban-modal");
+  if (modal) modal.classList.add("hidden");
+  window.location.href = "/logout";
+}
+
 function closeAllSheets() {
   document.querySelectorAll(".bottom-sheet").forEach(s =>
     s.classList.remove("active")
@@ -1057,7 +1101,7 @@ function showMyFeedbackUI() {
 
   document.body.innerHTML = `
     <div style="min-height:100vh;background:#000;color:#fff;padding:20px;">
-      <h2 style="text-align:center;">📝 Feedback About You</h2>
+      <h2 style="text-align:center;">📝 What People Think About You</h2>
 
       ${myFeedbackList.map(f => `
         <div style="background:#111;padding:15px;margin:15px 0;
@@ -1159,8 +1203,13 @@ async function confirmCheckIn() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
   });
+  const payload = await res.json().catch(() => ({}));
 
   if (!res.ok) {
+    if (payload.error === "account_blocked") {
+      showAdminBanNotice(payload.message);
+      return;
+    }
     alert("Failed to check in");
     return;
   }
@@ -1200,7 +1249,7 @@ function renderNearbyCards() {
   el.innerHTML = nearbyUsers.map(u => `
     <div class="nearby-card" onclick='openProfile(${JSON.stringify(u).replace(/'/g, "\\'")})'>
       <div class="card-top">
-        <div class="card-avatar">${u.username?.[0] || "?"}</div>
+        <div class="card-avatar">${avatarMarkup(u)}</div>
         <div>
           <div class="card-name">${u.username}</div>
           <div class="card-score"><i class="fas fa-star" style="font-size:10px"></i> ${u.trust_score ?? "--"}</div>
