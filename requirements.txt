@@ -3,3 +3,4 @@ Werkzeug
 Authlib
 python-dotenv
 pywebpush
+gunicorn

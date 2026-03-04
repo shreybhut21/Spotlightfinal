@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: spotlight-app
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn spotlight_app.app:app
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_PATH
+        value: /var/data/database.db
+      - key: PYTHON_VERSION
+        value: 3.11.11
+    disk:
+      name: spotlight-data
+      mountPath: /var/data
+      sizeGB: 1

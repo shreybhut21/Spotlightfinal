@@ -7,6 +7,9 @@ from flask import g
 # DATABASE PATH
 # ======================================================
 def _get_db_path():
+    env_db_path = os.environ.get("DATABASE_PATH", "").strip()
+    if env_db_path:
+        return env_db_path
     return os.path.join(os.path.dirname(__file__), "database.db")
 
 # ======================================================
@@ -56,6 +59,8 @@ def init_db():
             avatar_level INTEGER DEFAULT 1,
             avatar_url TEXT,
             is_active INTEGER DEFAULT 1,
+            is_verified INTEGER DEFAULT 0,
+            verified_at REAL,
 
             is_matched INTEGER DEFAULT 0,
             matched_with INTEGER,
@@ -79,6 +84,8 @@ def init_db():
     add_col("avatar_level", "ALTER TABLE users ADD COLUMN avatar_level INTEGER DEFAULT 1")
     add_col("avatar_url", "ALTER TABLE users ADD COLUMN avatar_url TEXT")
     add_col("is_active", "ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1")
+    add_col("is_verified", "ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
+    add_col("verified_at", "ALTER TABLE users ADD COLUMN verified_at REAL")
     add_col("is_matched", "ALTER TABLE users ADD COLUMN is_matched INTEGER DEFAULT 0")
     add_col("matched_with", "ALTER TABLE users ADD COLUMN matched_with INTEGER")
     add_col("phone", "ALTER TABLE users ADD COLUMN phone TEXT")
@@ -161,6 +168,12 @@ def init_db():
             ended_at REAL,
             user1_reached INTEGER DEFAULT 0,
             user2_reached INTEGER DEFAULT 0,
+            meeting_place TEXT,
+            meeting_intent TEXT,
+            meeting_time TEXT,
+            meeting_clue TEXT,
+            meeting_lat REAL,
+            meeting_lon REAL,
             end_reason TEXT,
             end_reason_by INTEGER,
             status TEXT CHECK(status IN ('active','ended'))
@@ -177,6 +190,18 @@ def init_db():
         c.execute("ALTER TABLE matches ADD COLUMN user1_reached INTEGER DEFAULT 0")
     if "user2_reached" not in match_cols:
         c.execute("ALTER TABLE matches ADD COLUMN user2_reached INTEGER DEFAULT 0")
+    if "meeting_place" not in match_cols:
+        c.execute("ALTER TABLE matches ADD COLUMN meeting_place TEXT")
+    if "meeting_intent" not in match_cols:
+        c.execute("ALTER TABLE matches ADD COLUMN meeting_intent TEXT")
+    if "meeting_time" not in match_cols:
+        c.execute("ALTER TABLE matches ADD COLUMN meeting_time TEXT")
+    if "meeting_clue" not in match_cols:
+        c.execute("ALTER TABLE matches ADD COLUMN meeting_clue TEXT")
+    if "meeting_lat" not in match_cols:
+        c.execute("ALTER TABLE matches ADD COLUMN meeting_lat REAL")
+    if "meeting_lon" not in match_cols:
+        c.execute("ALTER TABLE matches ADD COLUMN meeting_lon REAL")
     if "end_reason" not in match_cols:
         c.execute("ALTER TABLE matches ADD COLUMN end_reason TEXT")
     if "end_reason_by" not in match_cols:
@@ -229,6 +254,26 @@ def init_db():
     c.execute("CREATE INDEX IF NOT EXISTS idx_reviews_reviewed ON reviews(reviewed_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_requests_receiver ON requests(receiver_id)")
     c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email)")
+
+    # --------------------------------------------------
+    # ID VERIFICATION (private video review workflow)
+    # --------------------------------------------------
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS verification_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            status TEXT CHECK(status IN ('pending','approved','rejected'))
+                   DEFAULT 'pending',
+            video_filename TEXT,
+            submitted_at REAL,
+            reviewed_at REAL,
+            reviewed_by_admin TEXT,
+            rejection_reason TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    """)
+    c.execute("CREATE INDEX IF NOT EXISTS idx_verification_status ON verification_requests(status)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_verification_submitted ON verification_requests(submitted_at)")
 
     # --------------------------------------------------
     # REPORTS (user reports + app feedback)
